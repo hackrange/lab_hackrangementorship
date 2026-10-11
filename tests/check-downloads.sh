@@ -39,7 +39,8 @@ printf '\n'
 
 # Splunk, read from the Dockerfile rather than retyped, so this cannot drift
 # from what is actually built.
-splunk_url="$(grep -oE 'ARG SPLUNK_URL=\S+' "$HERE/images/splunk-lab/Dockerfile" | cut -d= -f2-)"
+splunk_url="$(grep -oE '^ARG SPLUNK_URL=\S+' "$HERE/images/splunk-lab/Dockerfile" | cut -d= -f2-)"
+splunk_fb="$(grep -oE '^ARG SPLUNK_URL_FALLBACK=\S+' "$HERE/images/splunk-lab/Dockerfile" | cut -d= -f2-)"
 if [ -z "$splunk_url" ]; then
     bad "the Splunk download URL is not in images/splunk-lab/Dockerfile"
 else
@@ -50,7 +51,17 @@ else
         *) bad "versions.env says $SPLUNK_VERSION/$SPLUNK_BUILD but the Dockerfile fetches something else" \
                "$splunk_url" ;;
     esac
-    head_ok "$splunk_url" "the Splunk package is still published" 500000000
+    head_ok "$splunk_url" "the Splunk package is on HackRange's own mirror" 500000000
+    # The fallback is allowed to disappear: that is the whole reason the mirror
+    # exists.  It is reported rather than failed.
+    if [ -n "$splunk_fb" ]; then
+        code="$(curl -sIL -o /dev/null -w '%{http_code}' --max-time 30 "$splunk_fb" 2>/dev/null)"
+        if [ "$code" = 200 ]; then
+            ok "Splunk's own site still has it too"
+        else
+            printf "  \033[33m[note]\033[0m Splunk's own site answers %s for this build; the mirror is now the only source.\n" "$code"
+        fi
+    fi
 fi
 
 # The base images every lab is built from.

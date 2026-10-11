@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Point this checkout at the place it is published.
 #
-#   scripts/retarget.sh github      github.com/hackrange/lab_hackrangementorship
-#   scripts/retarget.sh hackrange   git.hackrange.com/trice/lab_hackrangementorship
+#   scripts/retarget.sh github   github.com/hackrange/lab_hackrangementorship
+#   scripts/retarget.sh gitlab   git.hackrange.com/trice/lab_hackrangementorship
 #
 # The lab is published in two repositories.  Everything in them is identical
 # except the addresses a student is given: the repository an install updates
@@ -18,7 +18,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET="${1:?usage: retarget.sh github|forgejo}"
+TARGET="${1:?usage: retarget.sh github|gitlab}"
 
 case "$TARGET" in
     github)
@@ -26,15 +26,16 @@ case "$TARGET" in
         # GitHub serves a file's contents from a different hostname entirely.
         raw="https://raw.githubusercontent.com/hackrange/lab_hackrangementorship"
         ;;
-    hackrange)
+    gitlab)
         clone="https://git.hackrange.com/trice/lab_hackrangementorship.git"
-        # VERIFIED against the existing repository on this host, not assumed:
-        # it serves a raw file from "/-/raw/<branch>/<path>".  The Forgejo shape
-        # "/raw/branch/<branch>/<path>" answers 404 here, so a one line command
-        # built that way would fail for every student.
+        # GitLab serves a raw file from "/-/raw/<branch>/<path>".  Verified
+        # against the existing repository on this host rather than assumed: the
+        # shape some other forges use, "/raw/branch/<branch>/<path>", answers
+        # 404 here, and a one line command built that way would fail for every
+        # student who used it.
         raw="https://git.hackrange.com/trice/lab_hackrangementorship/-/raw"
         ;;
-    *) printf 'Unknown target: %s  (github or hackrange)\n' "$TARGET" >&2; exit 1 ;;
+    *) printf 'Unknown target: %s  (github or gitlab)\n' "$TARGET" >&2; exit 1 ;;
 esac
 
 python3 - "$HERE" "$clone" "$raw" <<'PY'

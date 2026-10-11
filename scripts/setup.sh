@@ -2,7 +2,7 @@
 # Run every setup step, in order.  install.sh calls this; so can a student who
 # wants to re-run the install from an existing copy:
 #
-#   sudo /opt/hackrange-labs/scripts/setup.sh
+#   sudo /opt/hackrange-mentorship/scripts/setup.sh
 #
 # Each step is its own script, numbered in the order they must run, and each
 # one is safe to run again.
@@ -45,9 +45,10 @@ printf '==================================================================%s\n' 
 /usr/local/sbin/hackrange-access info
 
 printf '  Handy commands:\n'
-printf '      /opt/hackrange-labs/show_information.sh   show all of this again\n'
+printf '      hackrange-lab list                        the labs, and their weeks\n'
+printf '      hackrange-lab start <lab>                 start the one your lesson names\n'
+printf '      hackrange-lab check                       mark your own findings\n'
 printf '      hackrange-lab status                      is everything running?\n'
-printf '      hackrange-lab reset                       a fresh lab, new password\n'
 printf '      hackrange-lab help                        everything else\n\n'
 if [ -n "$user" ]; then
     printf '  %s: log out of Ubuntu and back in once, so the lab commands work\n' "$user"

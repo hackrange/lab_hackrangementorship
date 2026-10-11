@@ -74,6 +74,12 @@ install -m 644 "$HR_ROOT/config/nginx/mentorship-stream.conf" /etc/nginx/modules
 install -m 644 "$HR_ROOT/config/guacamole-branding/images/favicon-64.png" \
                "$HR_ROOT/config/guacamole-branding/images/favicon-144.png" /etc/nginx/mentorship-brand/
 quiet hackrange-access cert || die "Could not make the web desktop's certificate."
+# Re-issue it at every boot.  A virtual machine often gets a different address
+# from one day to the next, and a certificate naming yesterday's address is a
+# browser warning the student cannot get rid of.
+install -m 644 "$HR_ROOT/config/systemd/hackrange-access.service" /etc/systemd/system/hackrange-access.service
+quiet systemctl daemon-reload
+quiet systemctl enable hackrange-access.service
 
 # Reload rather than restart: a restart cuts every open lab session.
 if systemctl is-active --quiet nginx; then

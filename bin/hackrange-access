@@ -236,19 +236,13 @@ info() {
     printf '%s  Or any Remote Desktop app%s  (same username and password)\n' "$b" "$o"
     printf '      address:  %s:%s\n\n' "${ip:-127.0.0.1}" "$RDP_PORT"
 
-    # The lab services, under the names the lessons use inside the lab and on
-    # this machine's own address for the student's own computer.
-    local here="${ip:-127.0.0.1}"
-    is_private "$here" || here=127.0.0.1
-    printf '%s  The lab services%s          inside the lab              from your own computer\n' "$b" "$o"
-    printf '      Git server (Forgejo)  https://labgit.lab:8444     https://%s:8444\n' "$here"
-    printf '      Package registry      https://labrepo.lab:8443    https://%s:8443/admin/\n' "$here"
-    printf '      Code review           https://10.10.10.70:8445    https://%s:8445\n' "$here"
-    printf '      Keycloak              https://10.10.10.70:8448    https://%s:8448\n' "$here"
-    printf '      Kong Manager          https://10.10.10.70:8449    (inside the lab only)\n'
-    printf '      Kong gateway          https://10.10.10.70:8451    https://%s:8451\n' "$here"
-    printf '      Grafana               https://10.10.10.70:8452    https://%s:8452\n' "$here"
-    printf '      Their usernames and passwords:  hackrange-lab env\n\n'
+    # No lab services here.  Every lab in this course is a self contained
+    # machine: the logins a lesson needs belong to whatever is running INSIDE
+    # the lab (Splunk, the DAST scanner), so they come from the lab itself
+    # rather than from a list of services on this machine.
+    printf '%s  The lab'"'"'s own logins%s\n' "$b" "$o"
+    printf '      Splunk, the scanner and anything else a lesson signs in to:\n'
+    printf '          hackrange-lab env\n\n'
 
     printf '%s  Good to know%s\n' "$b" "$o"
     printf '    - The first time, your browser warns that the connection is not\n'
@@ -259,15 +253,17 @@ info() {
     printf '      make the warning go away for good.\n'
     printf '    - The lab certificate'"'"'s fingerprint (check it before you trust it):\n'
     printf '      %s\n' "$(openssl x509 -noout -fingerprint -sha256 -in "$LABTLS/lab-ca.crt" 2>/dev/null | cut -d= -f2)"
-    printf '    - The lessons use names like https://labgit.lab:8444 that only work\n'
-    printf '      INSIDE the lab.  On your own computer, use the addresses above.\n'
+    printf '    - Some lessons use addresses that only work INSIDE the lab, such\n'
+    printf '      as http://portal.lab:5000 in the Week 11 challenge.  Open those\n'
+    printf '      from the lab'"'"'s own desktop or terminal, not from your computer.\n'
     printf '    - This password changes every time you start a new lab session, and\n'
     printf '      after every install.  To see the current one again, run:\n'
     printf '          /opt/hackrange-mentorship/show_information.sh\n'
     printf '    - Keep the password to yourself.  Do not post it in a chat, a forum\n'
     printf '      or a screenshot.  If you think someone saw it, run\n'
     printf '          hackrange-lab reset\n'
-    printf '      (push your work first) and it is replaced.\n'
+    printf '      and it is replaced.  (That restarts the lab, so anything inside\n'
+    printf '      it is lost; copy out what you want to keep first.)\n'
     printf '    - The lab only answers computers on your own private network, never\n'
     printf '      the internet.  Do not forward these ports on your router.\n'
 

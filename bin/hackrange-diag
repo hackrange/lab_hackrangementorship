@@ -21,7 +21,7 @@ if [ "$(id -u)" -ne 0 ]; then
     exec sudo "$0" "$@"
 fi
 
-HR_ROOT=/opt/hackrange-labs
+HR_ROOT=/opt/hackrange-mentorship
 HR_ETC=/etc/hackrange-mentorship
 stamp="$(date +%Y%m%d-%H%M%S)"
 name="hackrange-diag-$(hostname -s)-$stamp"
@@ -78,7 +78,6 @@ for c in hackrange-mentorship-guacd hackrange-mentorship-guacamole hackrange-men
     cap "docker/$c-inspect-state.txt" docker inspect -f '{{json .State}}' "$c"
     cap "docker/$c-logs.txt"          docker logs --tail 600 "$c"
 done
-cap docker/ci-job-containers.txt  sh -c "docker ps -a --filter name=FORGEJO-ACTIONS --format '{{.Names}} {{.Status}}'"
 
 # ---- the lab services, from this machine's point of view ------------------------------
 for u in https://127.0.0.1:8456/guacamole/; do

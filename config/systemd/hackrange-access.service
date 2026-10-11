@@ -3,7 +3,7 @@
 #
 # Author: Tim Rice
 [Unit]
-Description=Hackrange Local Lab web desktop certificate refresh
+Description=Hackrange Mentorship Local Lab web desktop certificate refresh
 After=network-online.target nginx.service
 Wants=network-online.target
 

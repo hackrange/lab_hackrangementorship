@@ -20,9 +20,18 @@ FROM debian:12-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV SPLUNK_HOME=/opt/splunk
-# Pinned Splunk release. Direct download from Splunk's CDN.
+# Pinned Splunk release, fetched from HackRange's own copy first.
+#
+# Splunk removes old builds from their site, and the URL names an exact version
+# AND build hash.  When a build is withdrawn, this image stops building for
+# every new student with nothing in this repository having changed, which is a
+# miserable thing to debug.  So the mirror is tried first and Splunk's own CDN
+# is the fallback, and either way the file is checked against the hash below
+# before it is installed, so neither source has to be trusted.
 ARG SPLUNK_DEB=splunk-9.3.2-d8bb32809498-linux-2.6-amd64.deb
-ARG SPLUNK_URL=https://download.splunk.com/products/splunk/releases/9.3.2/linux/splunk-9.3.2-d8bb32809498-linux-2.6-amd64.deb
+ARG SPLUNK_URL=https://hackrange.com/downloads/splunk-9.3.2-d8bb32809498-linux-2.6-amd64.deb
+ARG SPLUNK_URL_FALLBACK=https://download.splunk.com/products/splunk/releases/9.3.2/linux/splunk-9.3.2-d8bb32809498-linux-2.6-amd64.deb
+ARG SPLUNK_SHA256=37ed62ff0e93b94fd79f5ac624c82525a0e097fa7af4194083dc584bf8e983c3
 
 # Desktop + browser, matching analyst-lab. python3 is used only at build time to
 # generate the telemetry.
@@ -54,7 +63,9 @@ RUN apt-get update \
 
 # Install Splunk from the pinned .deb, run it as a dedicated splunk user.
 RUN useradd -m -r -d "$SPLUNK_HOME" splunk 2>/dev/null || true \
- && curl -fsSL -o /tmp/splunk.deb "$SPLUNK_URL" \
+ && { curl -fsSL --retry 3 -o /tmp/splunk.deb "$SPLUNK_URL" \
+      || curl -fsSL --retry 3 -o /tmp/splunk.deb "$SPLUNK_URL_FALLBACK"; } \
+ && echo "$SPLUNK_SHA256  /tmp/splunk.deb" | sha256sum -c - \
  && dpkg -i /tmp/splunk.deb \
  && rm -f /tmp/splunk.deb \
  && chown -R splunk:splunk "$SPLUNK_HOME"
