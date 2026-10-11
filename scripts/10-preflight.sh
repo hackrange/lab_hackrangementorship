@@ -70,8 +70,9 @@ say "free disk:  ${disk_gb} GB"
 [ "$(awk -v kb="$ram_kb" 'BEGIN { print int(kb / 1024 / 1024 * 10) }')" -ge $((MIN_RAM * 10 - 5)) ] ||
     note_short "Only ${ram_gb} GB of memory.  The lab needs at least ${MIN_RAM} GB (${REC_RAM} GB recommended)."
 
-# Disk matters most on a first install, when every image is built.
-if ! docker image inspect "$LAB_GUI_IMAGE" >/dev/null 2>&1; then
+# Disk matters most on a first install, when every image is built.  The Splunk
+# lab is the largest of them, so its presence is what says "already built".
+if ! docker image inspect "$SPLUNK_IMAGE" >/dev/null 2>&1; then
     [ "$disk_gb" -ge "$MIN_DISK" ] ||
         note_short "Only ${disk_gb} GB of free disk.  A first install needs at least ${MIN_DISK} GB free (${REC_DISK} GB recommended)."
 fi

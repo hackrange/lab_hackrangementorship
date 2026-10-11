@@ -22,7 +22,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 HR_ROOT=/opt/hackrange-labs
-HR_ETC=/etc/hackrange
+HR_ETC=/etc/hackrange-mentorship
 stamp="$(date +%Y%m%d-%H%M%S)"
 name="hackrange-diag-$(hostname -s)-$stamp"
 work="$(mktemp -d)"
@@ -46,7 +46,7 @@ cap system/cpu-memory.txt      sh -c 'nproc; free -h; cat /proc/pressure/memory 
 cap system/disk.txt            df -h
 cap system/uptime.txt          uptime
 cap system/virtualization.txt  systemd-detect-virt
-cap system/network.txt         sh -c 'ip -4 -brief addr; ip route; grep -E "labgit|labrepo" /etc/hosts'
+cap system/network.txt         sh -c 'ip -4 -brief addr; ip route'
 cap system/listening.txt       ss -ltnp
 cap system/dmesg-tail.txt      sh -c 'dmesg -T 2>/dev/null | tail -200'
 
@@ -58,10 +58,9 @@ cap lab/status.txt        sh -c 'hackrange-lab status 2>&1 | sed "s/\x1b\[[0-9;]
 # The session environment's NAMES only: which values exist, never what they are.
 cap lab/lab-env-keys.txt  sh -c "sed -n 's/=.*/=<set>/p' $HR_ETC/lab.env"
 cap lab/lab-conf.txt      cat "$HR_ETC/lab.conf"
-cap lab/identity-keys.txt sh -c 'for f in /etc/rancher/lab-identities/*.json; do echo "$f"; python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(sorted(k for k,v in d.items() if v))" "$f"; done'
 
 # ---- services -------------------------------------------------------------------------
-for u in hackrange-labnet hackrange-access docker containerd nginx k3s forgejo-runner; do
+for u in docker containerd nginx; do
     cap "services/$u-status.txt"  systemctl status --no-pager "$u"
     cap "services/$u-journal.txt" journalctl -u "$u" --no-pager -n 400
 done
@@ -75,33 +74,26 @@ cap docker/info.txt     docker info
 cap docker/ps.txt       docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
 cap docker/images.txt   docker images
 cap docker/disk.txt     docker system df
-for c in hackrange-forgejo hackrange-forgerepo hackrange-gcr hackrange-guacd hackrange-guacamole hackrange-lab; do
+for c in hackrange-mentorship-guacd hackrange-mentorship-guacamole hackrange-mentorship-lab hackrange-mentorship-dast; do
     cap "docker/$c-inspect-state.txt" docker inspect -f '{{json .State}}' "$c"
     cap "docker/$c-logs.txt"          docker logs --tail 600 "$c"
 done
 cap docker/ci-job-containers.txt  sh -c "docker ps -a --filter name=FORGEJO-ACTIONS --format '{{.Names}} {{.Status}}'"
 
 # ---- the lab services, from this machine's point of view ------------------------------
-for u in https://labgit.lab:8444/api/healthz https://labrepo.lab:8443/ https://10.10.10.70:8445/healthz https://127.0.0.1:8446/guacamole/; do
+for u in https://127.0.0.1:8456/guacamole/; do
     cap "reachability/$(echo "$u" | sed 's#https://##; s#[:/]#_#g').txt" curl -sS -o /dev/null -w '%{http_code} %{time_total}s\n' "$u"
 done
-cap reachability/tls-chain.txt sh -c 'echo | openssl s_client -connect 10.10.10.70:8444 -servername labgit.lab 2>&1 | grep -E "subject=|issuer=|Verify return"'
+cap reachability/tls-chain.txt sh -c 'echo | openssl s_client -connect 127.0.0.1:8456 2>&1 | grep -E "subject=|issuer=|Verify return"'
 
 # ---- Kubernetes ----------------------------------------------------------------------------
-K="/usr/local/bin/kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml"
-cap k8s/nodes.txt    sh -c "$K get nodes -o wide"
-cap k8s/pods.txt     sh -c "$K get pods -A -o wide"
-cap k8s/events.txt   sh -c "$K get events -A --sort-by=.lastTimestamp | tail -150"
-cap k8s/vcluster.txt sh -c 'KUBECONFIG=/etc/rancher/k3s/k3s.yaml vcluster list'
-cap k8s/quota.txt    sh -c "$K get resourcequota,limitrange -A"
-cap k8s/registries.txt sh -c 'cat /etc/rancher/k3s/registries.yaml; ls -la /var/lib/rancher/k3s/agent/etc/containerd/certs.d/'
 
 # ---- inside the lab session, if one is running ---------------------------------------------
-if [ "$(docker inspect -f '{{.State.Running}}' hackrange-lab 2>/dev/null)" = true ]; then
-    cap session/processes.txt docker exec hackrange-lab ps aux
-    cap session/hosts.txt     docker exec hackrange-lab cat /etc/hosts
+if [ "$(docker inspect -f '{{.State.Running}}' hackrange-mentorship-lab 2>/dev/null)" = true ]; then
+    cap session/processes.txt docker exec hackrange-mentorship-lab ps aux
+    cap session/hosts.txt     docker exec hackrange-mentorship-lab cat /etc/hosts
     cap session/reach.txt     docker exec -u student hackrange-lab bash -lc \
-        'for u in "$LAB_GIT_URL/api/healthz" "$LAB_REGISTRY_URL/" "$LAB_SAST_URL/healthz" "$LAB_K8S_API/version"; do curl -sS -o /dev/null -w "%{http_code} $u\n" "$u"; done; kubectl get ns 2>&1 | head'
+        'for u in "http://dast:8888/" "http://127.0.0.1:5000/" "http://127.0.0.1:8000/"; do curl -sS -o /dev/null -m 5 -w "%{http_code} $u\n" "$u" 2>&1; done'
 fi
 
 # ---- remove every secret -----------------------------------------------------------------------
@@ -112,10 +104,8 @@ secrets="$work/secrets"
     sed -nE 's/^LAB_[A-Z_]*(PASSWORD|TOKEN|TOKEN_APP|TOTP|KUBECONFIG_B64)=//p' "$HR_ETC/lab.env" 2>/dev/null
     sed -n 's/^LAB_ACCESS_PASSWORD=//p' "$HR_ETC/access.env" 2>/dev/null
     cat "$HR_ETC"/secrets/* 2>/dev/null
-    cat /etc/rancher/forgejo-admin-password /etc/rancher/forgerepo-admin-password /etc/rancher/gcr-admin 2>/dev/null
     python3 - <<'EOF' 2>/dev/null
 import glob, json
-for f in glob.glob("/etc/rancher/lab-identities/*.json") + glob.glob("/etc/rancher/lab-identities/_*"):
     try:
         d = json.load(open(f))
     except Exception:
@@ -131,7 +121,6 @@ for f in glob.glob("/etc/rancher/lab-identities/*.json") + glob.glob("/etc/ranch
         elif any(w in k for w in ("password", "token", "secret")) and "\n" not in v:
             print(v)
 EOF
-    python3 -c "import json; d=json.load(open('/etc/forgejo-runner/.runner')); print(d.get('token','')); print(d.get('uuid',''))" 2>/dev/null
 } | awk 'length($0) >= 6' | awk '{ print length($0) "\t" $0 }' | sort -rn | cut -f2- > "$secrets"
 
 SECRETS="$secrets" python3 - "$out" <<'EOF'
