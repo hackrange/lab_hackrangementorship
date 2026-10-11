@@ -16,7 +16,14 @@
 
 set -Eeuo pipefail
 
+# Where this copy of the lab updates itself from, and the address the one line
+# install command uses.  This lab is published in two places, and each copy
+# carries its OWN addresses: a student who installed from Forgejo must keep
+# updating from Forgejo, and the command printed back to them has to be one
+# they can actually run.  scripts/retarget.sh switches a checkout between them,
+# so the two copies differ in these two lines and nothing else.
 REPO_URL="${HR_REPO_URL:-https://github.com/hackrange/lab_hackrangementorship.git}"
+RAW_URL="${HR_RAW_URL:-https://raw.githubusercontent.com/hackrange/lab_hackrangementorship}"
 REPO_BRANCH="${HR_BRANCH:-main}"
 HR_ROOT="${HR_ROOT:-/opt/hackrange-mentorship}"
 
@@ -47,7 +54,7 @@ fi
 if [ "$(id -u)" -ne 0 ]; then
     stop "The installer needs administrator rights.  Run it with sudo:" \
          "" \
-         "  curl -fsSL https://raw.githubusercontent.com/hackrange/lab_hackrangementorship/${REPO_BRANCH}/install.sh | sudo bash"
+         "  curl -fsSL ${RAW_URL}/${REPO_BRANCH}/install.sh | sudo bash"
 fi
 
 # shellcheck disable=SC1091

@@ -1,58 +1,94 @@
 #!/usr/bin/env bash
-# Prove the workstation image's downloads work for a processor, without
-# building the whole 13GB image or owning that kind of machine.
+# Prove the things a student's install fetches from the internet are still there.
 #
-#   tests/check-downloads.sh amd64
-#   tests/check-downloads.sh arm64
+# Every lab image is built on the student's own machine, so the install depends
+# on a handful of outside addresses staying reachable.  The fragile one is
+# Splunk: the download URL names an exact version AND build hash, and Splunk
+# removes old builds from its site.  When that happens the Splunk labs stop
+# building for every new student, with no warning and nothing in this
+# repository having changed.  This catches it in a few seconds.
 #
-# It takes the "verified release downloads" section of the real Dockerfile,
-# exactly as written, and runs it in a throwaway Debian container with
-# `dpkg --print-architecture` answering the processor asked for.  Every file is
-# fetched, every checksum is checked, and every archive has the member the
-# Dockerfile extracts.  Only the three steps that would RUN a downloaded
-# program (Packer's plugin install, the AWS CLI installer, and Cinc's
-# installer) are skipped, because an arm64 program cannot run on an amd64
-# machine; their downloads are still fetched and checked.
+#   tests/check-downloads.sh
 #
 # Author: Tim Rice
-set -euo pipefail
+set -uo pipefail
 
-ARCH="${1:?usage: check-downloads.sh amd64|arm64}"
-HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-DF="$HERE/images/devsecops-lab/Dockerfile"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$HERE/versions.env"
 
-# The pinned versions, from the ARG line of the final stage.
-args="$(awk '/^ARG GITLEAKS=/,/[^\\]$/' "$DF" | sed 's/^ARG //; s/\\$//' | tr -s ' \n' ' ')"
+PASS=0; FAIL=0
+ok()  { printf '  \033[32m[pass]\033[0m %s\n' "$1"; PASS=$((PASS+1)); }
+bad() { printf '  \033[31m[FAIL]\033[0m %s\n' "$1"; [ -n "${2:-}" ] && printf '         %s\n' "$2"; FAIL=$((FAIL+1)); }
 
-# The download section: from its heading to the Python tools.  Comment lines
-# are dropped the way Docker drops them, and the trailing "\" continuations are
-# kept, so the text runs as one command exactly as it does in the build.
-section="$(awk '/# ---- verified release downloads/{on=1} /# ---- Python tools/{on=0} on' "$DF" |
-    grep -vE '^[[:space:]]*#' |
-    sed -e 's#^\([[:space:]]*\)PACKER_PLUGIN_PATH=/opt/packer-plugins packer plugins install "\$pl"; done; \\#\1echo "skip plugin $pl"; done; \\#' \
-        -e 's#unzip -q awscli.zip; ./aws/install; \\#unzip -q awscli.zip; test -x aws/install; \\#' \
-        -e 's#curl -fsSL https://omnitruck.cinc.sh/install.sh | bash -s -- -P cinc-auditor || echo "cinc-auditor unavailable"; \\#curl -fsSL -o /dev/null https://omnitruck.cinc.sh/install.sh; \\#')"
+# head <url> <label> [expected-min-bytes]
+head_ok() {
+    local url="$1" label="$2" min="${3:-0}" code len
+    code="$(curl -sIL -o /dev/null -w '%{http_code}' --max-time 30 "$url" 2>/dev/null)"
+    len="$(curl -sIL --max-time 30 "$url" 2>/dev/null | grep -i '^content-length' | tail -1 | tr -dc 0-9)"
+    if [ "$code" != 200 ]; then
+        bad "$label" "answered $code: $url"
+    elif [ "$min" -gt 0 ] && [ "${len:-0}" -lt "$min" ]; then
+        bad "$label" "only ${len:-0} bytes, expected at least $min"
+    else
+        ok "$label${len:+ ($(( len / 1048576 )) MB)}"
+    fi
+}
 
-script="$(mktemp)"
-trap 'rm -f "$script"' EXIT
-cat > "$script" <<EOF
-set -eux
-apt-get update -qq >/dev/null
-apt-get install -y -qq --no-install-recommends curl ca-certificates unzip xz-utils >/dev/null
-dpkg() { if [ "\${1:-}" = --print-architecture ]; then echo $ARCH; else command dpkg "\$@"; fi; }
-export $args
-mkdir -p /usr/local/bin /usr/share/falco/plugins /etc/falco/config.d /etc/falco/rules.d
-$section
-true
-# Each binary really is for this processor: the ELF header's machine field is
-# 0x3e for x86-64 and 0xb7 for arm64.
-want=\$( [ $ARCH = arm64 ] && echo b7 || echo 3e )
-for b in /usr/local/bin/*; do
-    m=\$(od -An -tx1 -j18 -N1 "\$b" | tr -d ' ')
-    [ "\$m" = "\$want" ] || { echo "WRONG ARCH: \$b (\$m)"; exit 1; }
+echo "The downloads a first install depends on"
+printf '\n'
+
+# Splunk, read from the Dockerfile rather than retyped, so this cannot drift
+# from what is actually built.
+splunk_url="$(grep -oE 'ARG SPLUNK_URL=\S+' "$HERE/images/splunk-lab/Dockerfile" | cut -d= -f2-)"
+if [ -z "$splunk_url" ]; then
+    bad "the Splunk download URL is not in images/splunk-lab/Dockerfile"
+else
+    # It must also be the version versions.env claims, or the two have drifted.
+    case "$splunk_url" in
+        *"$SPLUNK_VERSION"*"$SPLUNK_BUILD"*)
+            ok "versions.env matches the Dockerfile ($SPLUNK_VERSION build $SPLUNK_BUILD)" ;;
+        *) bad "versions.env says $SPLUNK_VERSION/$SPLUNK_BUILD but the Dockerfile fetches something else" \
+               "$splunk_url" ;;
+    esac
+    head_ok "$splunk_url" "the Splunk package is still published" 500000000
+fi
+
+# The base images every lab is built from.
+for ref in kalilinux/kali-rolling:latest debian:12-slim python:3.12-slim; do
+    if docker manifest inspect "$ref" >/dev/null 2>&1; then
+        ok "$ref can be pulled"
+    else
+        bad "$ref cannot be pulled" "two or more labs are built from it"
+    fi
 done
-echo
-echo "ALL DOWNLOADS VERIFIED FOR $ARCH: \$(ls /usr/local/bin | wc -l) programs, all the right processor"
-EOF
 
-docker run --rm -v "$script:/check.sh:ro" debian:13-slim bash /check.sh
+# The web desktop's images, pinned on purpose: 'latest' is published for amd64
+# only, so a student on an ARM machine would get no web desktop at all.
+for ref in "$GUACAMOLE_IMAGE" "$GUACD_IMAGE"; do
+    if docker manifest inspect "$ref" >/dev/null 2>&1; then
+        arches="$(docker manifest inspect "$ref" 2>/dev/null | grep -oE '"architecture": *"[a-z0-9]+"' | cut -d'"' -f4 | sort -u | tr '\n' ' ')"
+        case "$arches" in
+            *arm64*) ok "$ref is published for: $arches" ;;
+            *) bad "$ref is published only for: $arches" "an ARM machine would have no web desktop" ;;
+        esac
+    else
+        bad "$ref cannot be pulled"
+    fi
+done
+
+# The scanner's source, which must stay anonymously cloneable or the Week 11
+# challenge cannot be built by a student at all.
+# Either a branch or a tag: the installer clones with -b, which takes both, and
+# this version of the scanner is published as a BRANCH named 2.1.1.  An earlier
+# version of this check looked only under refs/tags and reported the Week 11
+# lab as unbuildable when it builds perfectly well.
+if GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/true \
+   timeout 60 git ls-remote "$DAST_REPO" "refs/heads/$DAST_REF" "refs/tags/$DAST_REF" 2>/dev/null | grep -q .; then
+    ok "the scanner source is public and has $DAST_REF"
+else
+    bad "cannot reach $DAST_REPO at $DAST_REF anonymously" \
+        "the Week 11 scanner could not be built on a student's machine"
+fi
+
+printf '\n%s passed, %s failed\n' "$PASS" "$FAIL"
+[ "$FAIL" -eq 0 ] || exit 1
