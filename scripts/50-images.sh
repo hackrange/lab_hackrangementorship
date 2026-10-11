@@ -25,12 +25,31 @@ ARCH="$(dpkg --print-architecture 2>/dev/null || echo amd64)"
 if [ "$ARCH" != amd64 ]; then
     if ! [ -e /proc/sys/fs/binfmt_misc/qemu-x86_64 ]; then
         say "Setting up x86 emulation (the Splunk labs are x86 only)..."
-        quiet apt-get install -y -qq qemu-user-static binfmt-support ||
-            warn "Could not install x86 emulation; the Splunk labs will not build."
-        # The container-based registration covers the case where the distro
-        # packages did not register the handler themselves.
-        [ -e /proc/sys/fs/binfmt_misc/qemu-x86_64 ] ||
+        # The package has three names depending on the release: Ubuntu 26.04
+        # arm64 has no qemu-user-static at all, only qemu-user-binfmt and
+        # qemu-user, and asking for the wrong one prints "has no installation
+        # candidate" and installs nothing.  Try each, quietly, and judge by
+        # whether the handler appears rather than by what apt said.
+        for pkg in qemu-user-static qemu-user-binfmt qemu-user; do
+            [ -e /proc/sys/fs/binfmt_misc/qemu-x86_64 ] && break
+            quiet apt-get install -y -qq "$pkg" binfmt-support 2>/dev/null || true
+        done
+        # Failing that, the handler can be registered from a container.  This
+        # is tried SECOND but it is the one that usually works, so no warning
+        # is printed until both have been tried: an earlier version announced
+        # "the Splunk labs will not build" and was then contradicted a second
+        # later by this very line succeeding.
+        if ! [ -e /proc/sys/fs/binfmt_misc/qemu-x86_64 ]; then
             quiet docker run --privileged --rm tonistiigi/binfmt --install amd64 || true
+        fi
+        if [ -e /proc/sys/fs/binfmt_misc/qemu-x86_64 ]; then
+            ok "x86 emulation is ready"
+        else
+            warn "Could not set up x86 emulation, so the Splunk labs (weeks 8 to 10)"
+            warn "will not build on this machine.  Everything else will."
+        fi
+    else
+        ok "x86 emulation is already set up"
     fi
 fi
 

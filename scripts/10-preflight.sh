@@ -65,6 +65,25 @@ say "processor:  $(uname -m) ($arch), $cpus cores"
 say "memory:     ${ram_gb} GB"
 say "free disk:  ${disk_gb} GB"
 
+# Can this machine actually be written to?  A disk with enough free space can
+# still be unusable: on one test machine the root filesystem had real ext4
+# errors, so df reported 103 GB free and every write to /root returned
+# "Input/output error".  The install got as far as building images before
+# failing with "mkdir /root/.docker: input/output error", which tells a student
+# nothing about what is wrong.  Three seconds here saves that.
+for d in /opt /root /var/lib; do
+    probe="$d/.hackrange-write-probe.$$"
+    if ! ( : > "$probe" ) 2>/dev/null; then
+        die "This machine cannot be written to: $d returns an error.
+    That usually means a damaged or read-only filesystem, not a full one
+    (there is ${disk_gb} GB free).  Check the system log for filesystem
+    errors:   sudo dmesg | grep -i 'I/O error'
+    A virtual machine in this state needs its disk checked from a rescue
+    boot, or rebuilding, before the lab can be installed."
+    fi
+    rm -f "$probe" 2>/dev/null || true
+done
+
 [ "$cpus" -ge "$MIN_CPU" ] || note_short "Only $cpus processor cores.  The lab needs at least $MIN_CPU ($REC_CPU recommended)."
 # A VM given 16 GB reports a little under that, so allow half a gigabyte.
 [ "$(awk -v kb="$ram_kb" 'BEGIN { print int(kb / 1024 / 1024 * 10) }')" -ge $((MIN_RAM * 10 - 5)) ] ||
@@ -90,14 +109,9 @@ fi
     say "That meets the minimum.  More memory and cores make the Kubernetes days faster."
 
 # ---- the address and ports the lab uses ---------------------------------------
-# The lab services answer on 10.10.10.70 on a private interface of this machine.
-# If the machine's real network already uses that exact address, the two would
-# fight over it.
-if ip -4 -o addr show | grep -v ' lab0 ' | grep -q " ${HR_SERVICES_IP}/"; then
-    die "This machine's own network address is ${HR_SERVICES_IP}, which the lab needs for
-    its services.  Change the virtual machine's network (a NAT network is best)
-    so it gets a different address, and run the install again."
-fi
+# No address check here.  The DevSecOps Local Lab gives itself 10.10.10.70 for
+# its services and has to refuse a machine already using that address; this
+# course runs no services, so there is nothing to collide with.
 
 # Ports the lab needs.  If something else holds one, say which, rather than
 # failing later with a confusing error.  The lab's own holders are fine: a
