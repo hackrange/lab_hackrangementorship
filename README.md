@@ -117,6 +117,19 @@ The other challenges are a piece of reasoning rather than a string to find, and
 those labs carry the instructor's own answer key: `check` runs it so you can
 compare your working to it.
 
+## Deliberately fake credentials
+
+This is a training lab, so some of what is inside looks alarming and is not.
+The cloud account export contains invented AWS access keys for a company that
+does not exist, the vulnerable portal has sample database credentials, and two
+labs hand you a weak login on purpose: Splunk as `admin` / `Changeme123`, and
+the DAST scanner as `admin` / `student`.
+
+Those two are the logins the lessons tell you to use. They belong to throwaway
+instances that live inside a lab container on this machine, answer only inside
+it, and are deleted when you stop the lab. Nothing there is a real secret, and
+none of it reaches the internet.
+
 ## Removing it
 
 ```

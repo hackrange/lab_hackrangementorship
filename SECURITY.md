@@ -7,10 +7,22 @@ network.
 
 ## Planted secrets are not vulnerabilities
 
-This lab teaches secret scanning, so it contains deliberately fake credentials
-(a made-up GitHub token, `LAB_SECRET_...` values, sample database passwords,
-an example SSH key).  They are listed in the README under "Deliberately fake
-secrets".  None of them is real or grants access to anything.
+The labs of this course contain made-up credentials on purpose, because finding
+them is the exercise:
+
+- the cloud account export carries fake AWS access keys (`AKIA5NIMBUSPAY0ADMIN`
+  and friends, for a company that does not exist), a secret written into a
+  machine's start up script, and a plaintext key file
+- the vulnerable web portal has its own sample database credentials
+- the Splunk lab signs in as `admin` / `Changeme123`, and the DAST scanner as
+  `admin` / `student`
+
+The last two are weak on purpose. They belong to disposable teaching instances
+that exist only inside a lab container on one person's machine, are never
+reachable from the internet, and are deleted when the lab stops. They are the
+credentials the lessons tell students to type.
+
+None of these are findings. Please do not report them.
 
 ## Reporting a real problem
 
