@@ -1,0 +1,16 @@
+{
+  "PolicyName": "deploy-pipeline",
+  "AttachedToRole": "deploy-role",
+  "PolicyDocument": {
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "ecs:UpdateService", "ecs:DescribeServices"],
+      "Resource": [
+        "arn:aws:s3:::nimbuspay-artifacts/*",
+        "arn:aws:ecs:us-east-1:111122223333:service/prod/*"
+      ]
+    }]
+  },
+  "Note": "many actions, but each is pinned to a named resource - this is fine"
+}

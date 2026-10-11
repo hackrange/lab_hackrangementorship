@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# hackrange-check: mark a student's own work, inside the running lab.
+#
+#   hackrange-lab check [lab]            how many you have found, and what is left
+#   hackrange-lab check [lab] --reveal   the answer key in full
+#
+# Two kinds of lab, because the course has two kinds of challenge.
+#
+# A challenge with a definite answer (the cloud audit, the web app review)
+# hides a marker behind each real finding, reachable only by exploiting or
+# locating it properly.  The student records what they find in ~/findings.txt
+# and this counts them.  When something is missing it says what to look for in
+# plain words and never prints the marker, because a checker that leaks the
+# answer the moment you are stuck is not a check, it is a walkthrough.
+#
+# A challenge whose answer is a piece of reasoning (the audit evidence, the
+# intrusion, the detections) cannot be marked by a string match.  Those labs
+# carry the instructor's own answer key, so this runs it and the student
+# compares their working to it, which is the honest version of checking.
+#
+# Author: Tim Rice
+set -uo pipefail
+
+HR_ROOT=/opt/hackrange-mentorship
+HR_ETC=/etc/hackrange-mentorship
+CATALOG="$HR_ROOT/config/labs.conf"
+ANSWERS="$HR_ROOT/config/answers"
+STATE="$HR_ETC/current-lab"
+NAME=hackrange-mentorship-lab
+FINDINGS=/home/student/findings.txt
+
+bold() { printf '\e[1m%s\e[0m\n' "$*"; }
+fail() { printf '\e[31m%s\e[0m\n' "$*" >&2; exit 1; }
+asroot() { if [ "$(id -u)" -eq 0 ]; then "$@"; else sudo "$@"; fi; }
+
+DOCKER=(docker)
+docker info >/dev/null 2>&1 || { [ "$(id -u)" -ne 0 ] && DOCKER=(sudo docker); }
+d() { "${DOCKER[@]}" "$@"; }
+
+[ "$(d inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null)" = true ] ||
+    fail "No lab is running.  Start the one you are working in: hackrange-lab start <lab>"
+
+key="${1:-}"
+[ -n "$key" ] && [ "$key" != --reveal ] || key="$(asroot cat "$STATE" 2>/dev/null)"
+[ -n "$key" ] || fail "Which lab?  For example: hackrange-lab check cloud"
+reveal=0
+for a in "$@"; do [ "$a" = --reveal ] && reveal=1; done
+
+# ------------------------------------------------- the marker based challenges
+marker_check() {
+    local conf="$ANSWERS/$key.conf" total found=0 missing=()
+    total="$(grep -cE '^FLAG' "$conf")"
+
+    # The student's own file, read from inside the lab.
+    local text
+    text="$(d exec "$NAME" cat "$FINDINGS" 2>/dev/null || true)"
+    if [ -z "$text" ]; then
+        bold "Nothing to check yet"
+        printf '\nWrite what you find in the lab, one per line, in:\n    %s\n\n' "$FINDINGS"
+        printf 'Each real finding carries a marker that starts with FLAG-.  Paste the\n'
+        printf 'marker, or the whole line you found it on.  Then run this again:\n\n'
+        printf '    hackrange-lab check %s\n\n' "$key"
+        printf 'There are %s to find.\n' "$total"
+        return 0
+    fi
+
+    local line m what
+    while IFS= read -r line; do
+        [ -n "$line" ] || continue
+        case "$line" in \#*) continue ;; esac
+        m="${line%%|*}"; what="${line#*|}"
+        if printf '%s' "$text" | grep -qiF "$m"; then
+            found=$((found+1))
+            printf '  \e[32m[found]\e[0m   %s\n' "$what"
+        else
+            missing+=("$what")
+        fi
+    done <<< "$(grep -E '^FLAG' "$conf")"
+
+    local m2
+    for m2 in "${missing[@]}"; do printf '  \e[33m[missing]\e[0m %s\n' "$m2"; done
+
+    printf '\n'
+    if [ "$found" -eq "$total" ]; then
+        bold "All $total found.  That is the whole challenge."
+    else
+        bold "$found of $total found."
+        printf '\nThe missing ones are named above in plain words, not as their markers,\n'
+        printf 'so you can go and look.  If you want the full key:\n\n'
+        printf '    hackrange-lab check %s --reveal\n' "$key"
+    fi
+}
+
+marker_reveal() {
+    local conf="$ANSWERS/$key.conf"
+    bold "The answer key for the $key lab"
+    printf '\n'
+    grep -E '^FLAG' "$conf" | while IFS='|' read -r m what; do
+        printf '  %-52s %s\n' "$m" "$what"
+    done
+    printf '\n'
+}
+
+# ------------------------------------------------- the reasoning challenges
+# These labs ship the instructor's key as a program.  Running it is the check.
+key_script() {
+    local script="$1" blurb="$2"
+    if ! d exec -u student "$NAME" sh -c "command -v $script" >/dev/null 2>&1; then
+        fail "This lab has no answer key installed ($script is not in it)."
+    fi
+    bold "$blurb"
+    printf '\nThis is the instructor'"'"'s own working.  Compare it to yours: where your\n'
+    printf 'number or your conclusion differs, the method is what to look at.\n\n'
+    d exec -u student -w /home/student "$NAME" bash -lc "$script"
+}
+
+case "$key" in
+    cloud|webapp|webapp-gui)
+        [ -r "$ANSWERS/$key.conf" ] || fail "No answer key for the $key lab."
+        if [ "$reveal" = 1 ]; then marker_reveal; else
+            bold "Checking your findings in the $key lab"; printf '\n'; marker_check
+        fi ;;
+    analyst)
+        key_script lab-audit-answers "The audit evidence challenge, worked through" ;;
+    splunk)
+        printf '\n'; bold "Checking your work in the splunk lab"
+        printf '\nThis week'"'"'s answers are a reconstruction, not a list of strings, so there\n'
+        printf 'is nothing to match mechanically.  The full solution, with the searches\n'
+        printf 'that produce each step of the kill chain, is the walkthrough attached to\n'
+        printf 'the lesson in the course.  Work the investigation first, then read it.\n\n' ;;
+    kali|netlab)
+        printf '\n'; bold "Checking your work in the $key lab"
+        printf '\nThese labs are exercises rather than challenges with a hidden answer:\n'
+        printf 'you run the commands and read what comes back.  The one challenge in\n'
+        printf 'this group, auditing an inherited server, is marked against the\n'
+        printf 'walkthrough attached to its lesson in the course.\n\n' ;;
+    *) fail "There is no lab called '$key'.  Try: hackrange-lab list" ;;
+esac

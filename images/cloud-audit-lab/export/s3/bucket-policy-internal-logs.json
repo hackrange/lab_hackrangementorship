@@ -1,0 +1,14 @@
+{
+  "Bucket": "nimbuspay-internal-logs",
+  "Policy": {
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Principal": {"AWS": "arn:aws:iam::111122223333:role/log-writer"},
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::nimbuspay-internal-logs/*"
+    }]
+  },
+  "PublicAccessBlock": "enabled",
+  "Note": "principal is a specific role, not * - not public"
+}

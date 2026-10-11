@@ -1,0 +1,17 @@
+{
+  "SecurityGroups": [
+    {
+      "GroupId": "sg-web",
+      "Inbound": [
+        {"Port": 443, "Cidr": "0.0.0.0/0", "Note": "https from anywhere - expected for a web server"},
+        {"Port": 22,  "Cidr": "0.0.0.0/0", "Note": "SSH open to the entire internet. FLAG-security-group-ssh-open-to-world"}
+      ]
+    },
+    {
+      "GroupId": "sg-db",
+      "Inbound": [
+        {"Port": 5432, "Cidr": "10.0.0.0/16", "Note": "postgres, internal VPC only - correct"}
+      ]
+    }
+  ]
+}

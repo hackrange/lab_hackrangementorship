@@ -1,0 +1,14 @@
+{
+  "PolicyName": "devops-access",
+  "AttachedToUser": "ci-runner",
+  "PolicyDocument": {
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Sid": "FLAGiamAdminWildcard",
+      "Effect": "Allow",
+      "Action": "*",
+      "Resource": "*"
+    }]
+  },
+  "Note": "temporary, added during the 2025 migration - FLAG-iam-wildcard-admin-star-star"
+}

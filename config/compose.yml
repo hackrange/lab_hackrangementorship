@@ -1,0 +1,53 @@
+# The web desktop, and nothing else.
+#
+# The DevSecOps Local Lab runs a Git server, a package registry, a scanner,
+# Keycloak, Kong and Grafana here.  This course needs none of them: every
+# mentorship lab is self contained, so the only always on piece is the way a
+# student opens a lab in a browser.
+#
+# Guacamole speaks RDP to whichever lab is running, by the container name
+# hackrange-mentorship-lab on the access network.
+#
+# Author: Tim Rice
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  guacd:
+    logging: *logging
+    image: ${GUACD_IMAGE}
+    container_name: hackrange-mentorship-guacd
+    restart: unless-stopped
+    networks: [access, guac]
+
+  guacamole:
+    logging: *logging
+    image: ${GUACAMOLE_IMAGE}
+    container_name: hackrange-mentorship-guacamole
+    restart: unless-stopped
+    depends_on: [guacd]
+    environment:
+      GUACD_HOSTNAME: guacd
+      GUACAMOLE_HOME: /etc/hackrange-guacamole
+      # The web app sits behind nginx, which adds the real client address.
+      REMOTE_IP_VALVE_ENABLED: "true"
+      # A signed in student stays signed in for 30 days (in minutes) rather
+      # than the default hour: the lab should not time out under them.
+      API_SESSION_TIMEOUT: "43200"
+    ports:
+      - "127.0.0.1:18091:8080"
+    volumes:
+      - /etc/hackrange-mentorship/guacamole:/etc/hackrange-guacamole:ro
+    # The login file is readable by this group only (hackrange-mentorship-guac
+    # on the host), not by whatever user happens to have the image's group id.
+    group_add: ["${HR_GUAC_GID}"]
+    networks: [guac]
+
+networks:
+  access:
+    name: hackrange-mentorship-access
+  guac:
+    name: hackrange-mentorship-guac

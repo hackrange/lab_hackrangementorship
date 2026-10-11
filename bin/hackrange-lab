@@ -1,0 +1,326 @@
+#!/usr/bin/env bash
+# hackrange-lab: the student's one command for the Mentorship Local Lab.
+#
+#   hackrange-lab list            the labs, and the course weeks each one is for
+#   hackrange-lab info            how to get in: web address, username, password
+#   hackrange-lab start <lab>     start a lab (a fresh machine, a new password)
+#   hackrange-lab desktop [lab]   open the lab's desktop on this machine
+#   hackrange-lab shell [lab]     a terminal inside the lab (no password needed)
+#   hackrange-lab ssh [lab]       connect with SSH (shows the password first)
+#   hackrange-lab env [lab]       the lab's addresses, usernames and passwords
+#   hackrange-lab check [lab]     check your work against the answer key
+#   hackrange-lab stop [lab]      end the lab (the machine is deleted)
+#   hackrange-lab reset [lab]     end it and start fresh (a new password)
+#   hackrange-lab status          is every part of the lab running?
+#   hackrange-lab update          get the latest version of the lab
+#   hackrange-lab diag            save a diagnostics file to send for help
+#
+# The course has several labs, one per group of weeks, and they are separate
+# machines.  Start the one the lesson names.  Only one runs at a time, because
+# they each want the whole desktop door; starting another swaps it over.
+#
+# A lab is disposable: stop or reset deletes it and everything in it.  Work you
+# want to keep goes on your own machine, not inside the lab.
+#
+# Some commands ask for your Ubuntu password: the lab password is kept where
+# only an administrator can read it.
+#
+# Author: Tim Rice
+set -uo pipefail
+
+HR_ROOT=/opt/hackrange-mentorship
+HR_ETC=/etc/hackrange-mentorship
+CATALOG="$HR_ROOT/config/labs.conf"
+ACCESS=/usr/local/sbin/hackrange-access
+STATE="$HR_ETC/current-lab"
+NET=hackrange-mentorship-access
+WEB_PORT=8456
+SSH_PORT=2223
+RDP_PORT=13489
+SSH_INNER=12223
+RDP_INNER=13490
+SSH_KEYS_DIR="$HR_ETC/ssh"
+NAME=hackrange-mentorship-lab          # the running lab, whichever it is
+COMPANION=hackrange-mentorship-dast    # the Week 11 sidecar, when a lab wants one
+PAIRNET=hackrange-mentorship-pair      # the private network the pair shares
+
+# The capabilities and budgets, shared with tests/rehearse.sh.
+. "$HR_ROOT/bin/lab-runopts.sh"
+
+bold() { printf '\e[1m%s\e[0m\n' "$*"; }
+fail() { printf '\e[31m%s\e[0m\n' "$*" >&2; exit 1; }
+
+asroot() { if [ "$(id -u)" -eq 0 ]; then "$@"; else sudo "$@"; fi; }
+
+DOCKER=(docker)
+if ! docker info >/dev/null 2>&1; then
+    [ "$(id -u)" -ne 0 ] && DOCKER=(sudo docker)
+    "${DOCKER[@]}" info >/dev/null 2>&1 || fail "Docker is not running.  Try: sudo systemctl start docker"
+fi
+d() { "${DOCKER[@]}" "$@"; }
+
+running() { [ "$(d inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null)" = true ]; }
+password() { asroot sed -n 's/^LAB_ACCESS_PASSWORD=//p' "$HR_ETC/access.env"; }
+
+# This machine's address on its network, or loopback when it has none.
+address() {
+    local ip; ip="$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -1)"
+    echo "${ip:-127.0.0.1}"
+}
+
+# ------------------------------------------------------------------ catalog
+# A row is: key|image|proto|caps|companion|weeks|title
+row() { grep -vE '^\s*#|^\s*$' "$CATALOG" | awk -F'|' -v k="$1" '$1==k {print; exit}'; }
+field() { echo "$1" | cut -d'|' -f"$2"; }
+keys()  { grep -vE '^\s*#|^\s*$' "$CATALOG" | cut -d'|' -f1; }
+
+# The lab a command applies to: the one named, else the one running, else tell
+# the student to pick.  Guessing here would start the wrong week's lab.
+which_lab() {
+    local want="${1:-}"
+    if [ -n "$want" ]; then
+        [ -n "$(row "$want")" ] || fail "There is no lab called '$want'.  Try: hackrange-lab list"
+        echo "$want"; return
+    fi
+    if running && [ -r "$STATE" ]; then asroot cat "$STATE"; return; fi
+    fail "Which lab?  Name the one the lesson says, for example: hackrange-lab start netlab
+      (hackrange-lab list shows them all)"
+}
+
+list() {
+    bold "The labs of the Hackrange Mentorship course"
+    printf '\n  %-12s %-7s %s\n' "lab" "weeks" "what it is for"
+    printf '  %-12s %-7s %s\n' "---" "-----" "--------------"
+    local r cur=""
+    [ -r "$STATE" ] && cur="$(asroot cat "$STATE" 2>/dev/null)"
+    while IFS= read -r r; do
+        [ -n "$r" ] || continue
+        local k w t mark=""
+        k="$(field "$r" 1)"; w="$(field "$r" 6)"; t="$(field "$r" 7)"
+        [ "$k" = "$cur" ] && running && mark=" \e[32m(running)\e[0m"
+        printf "  %-12s %-7s %s$mark\n" "$k" "$w" "$t"
+    done <<< "$(grep -vE '^\s*#|^\s*$' "$CATALOG")"
+    printf '\n  Start one with:  hackrange-lab start <lab>\n'
+}
+
+info() { asroot "$ACCESS" info; }
+
+# ------------------------------------------------------------------ start
+start() {
+    local key; key="$(which_lab "${1:-}")"
+    local r; r="$(row "$key")"
+    local image proto caps companion title
+    image="$(field "$r" 2)"; proto="$(field "$r" 3)"; caps="$(field "$r" 4)"
+    companion="$(field "$r" 5)"; title="$(field "$r" 7)"
+
+    d image inspect "$image" >/dev/null 2>&1 ||
+        fail "The image for this lab ($image) is not built yet.  Run: sudo $HR_ROOT/install.sh"
+
+    if running; then
+        local cur; cur="$(asroot cat "$STATE" 2>/dev/null || true)"
+        if [ "$cur" = "$key" ]; then info; return; fi
+        printf 'Swapping from the %s lab to %s.  The %s lab is deleted.\n' "$cur" "$key" "$cur"
+        stop -y >/dev/null
+    fi
+    d rm -f "$NAME" "$COMPANION" >/dev/null 2>&1
+
+    printf 'Starting the %s lab with a new password...\n' "$key"
+    # Record which lab this is BEFORE rotating the password.  The web desktop's
+    # connection is built from this file: it decides whether the browser opens a
+    # desktop or a terminal, and four of the seven labs are terminals.  Rotating
+    # first would configure the browser for the lab that ran last, so a student
+    # would open their terminal lab and get an empty desktop.
+    asroot install -m 600 /dev/stdin "$STATE" <<< "$key"
+    asroot "$ACCESS" rotate || fail "Could not make a new lab password."
+    asroot "$ACCESS" cert || true
+
+    # The same SSH host keys in every lab, so ssh never greets the student with
+    # "REMOTE HOST IDENTIFICATION HAS CHANGED" and teach them to ignore it.
+    local keys=() k
+    for k in "${SSH_KEYS_DIR}"/ssh_host_*_key; do
+        asroot test -f "$k" || continue
+        keys+=(-v "$k:/etc/ssh/$(basename "$k"):ro" -v "$k.pub:/etc/ssh/$(basename "$k").pub:ro")
+    done
+
+    # The hosted capability profiles, kept identical so a lesson behaves the
+    # same: offsec for nmap's raw sockets, netlab for the lessons that
+    # reconfigure routing and the firewall.  A container only ever changes its
+    # OWN network namespace, so this cannot reach the student's machine.
+    local runopts; read -r -a runopts <<< "$(lab_run_opts "$proto" "$caps")"
+
+    local platform; read -r -a platform <<< "$(lab_platform_opts "$image")"
+
+    # The Week 11 challenge has a scanner beside it on a private network, where
+    # the two reach each other as 'dast' and 'target' and nothing else can.
+    local netargs=(--network "$NET")
+    if [ "$companion" != "-" ]; then
+        d network inspect "$PAIRNET" >/dev/null 2>&1 || d network create --internal "$PAIRNET" >/dev/null
+        d image inspect "$companion" >/dev/null 2>&1 ||
+            fail "This lab's scanner image ($companion) is not built yet.  Run: sudo $HR_ROOT/install.sh"
+        local compopts; read -r -a compopts <<< "$(lab_companion_opts)"
+        d run -d --name "$COMPANION" --network "$PAIRNET" --network-alias dast \
+            --restart unless-stopped "${compopts[@]}" \
+            --log-opt max-size=10m --log-opt max-file=3 \
+            "$companion" >/dev/null || fail "The lab's scanner would not start."
+    fi
+
+    d run -d --name "$NAME" --hostname "$key-lab" \
+        --restart unless-stopped \
+        "${netargs[@]}" \
+        ${platform[@]+"${platform[@]}"} \
+        "${runopts[@]}" \
+        -e "LAB_PASSWORD=$(password)" \
+        -e "LAB_LOCAL_HOST=$(address)" -e "LAB_LOCAL_WEB_PORT=$WEB_PORT" \
+        -e "LAB_LOCAL_SSH_PORT=$SSH_PORT" -e "LAB_LOCAL_RDP_PORT=$RDP_PORT" \
+        -e "DAST_URL=http://dast:8888" -e "DAST_USER=admin" -e "DAST_PASSWORD=student" \
+        -e "PORTAL_URL=http://portal.lab:5000" \
+        -p "127.0.0.1:$SSH_INNER:22" -p "127.0.0.1:$RDP_INNER:3389" \
+        "${keys[@]}" \
+        --log-opt max-size=10m --log-opt max-file=3 \
+        "$image" >/dev/null || fail "The $key lab would not start.  Try: hackrange-lab status"
+
+    # The pair share a private network as well as the desktop one, so the
+    # scanner can reach the portal inside the lab by the name 'target'.
+    if [ "$companion" != "-" ]; then
+        d network connect --alias target "$PAIRNET" "$NAME" >/dev/null 2>&1 || true
+    fi
+
+    # Wait for the door the lesson actually uses, not just the container.
+    local want=xrdp; [ "$proto" = ssh ] && want=sshd
+    local i
+    for i in $(seq 1 90); do
+        d exec "$NAME" pgrep -x "$want" >/dev/null 2>&1 && break
+        sleep 2
+    done
+    d exec "$NAME" pgrep -x "$want" >/dev/null 2>&1 ||
+        fail "The $key lab started but its $([ "$proto" = ssh ] && echo "terminal" || echo "desktop") did not.  Try: hackrange-lab reset $key"
+
+    printf '\n'; bold "$title"
+    info
+    env_for "$key" || true
+}
+
+# ------------------------------------------------------------------ in the lab
+in_lab() {
+    running || fail "No lab is running.  Start one with: hackrange-lab start <lab>"
+    local tty=(-i); [ -t 0 ] && [ -t 1 ] && tty=(-it)
+    d exec "${tty[@]}" -u student -w /home/student "$NAME" bash -lc "$1"
+}
+
+# Every credential the lab has, printed without the student setting anything up.
+env_for() {
+    local key="${1:-$(which_lab "${2:-}")}"
+    local r; r="$(row "$key")"
+    local proto companion; proto="$(field "$r" 3)"; companion="$(field "$r" 5)"
+    printf '\n'; bold "Signing in to the $key lab"
+    printf '  user:      student\n'
+    printf '  password:  %s\n' "$(password)"
+    case "$key" in
+        splunk)
+            printf '\n'; bold "Splunk, inside the lab"
+            printf '  address:   http://localhost:8000  (the Splunk icon on the desktop)\n'
+            printf '  user:      admin\n'
+            printf '  password:  Changeme123\n' ;;
+        webapp-gui)
+            printf '\n'; bold "The target and the scanner"
+            printf '  portal:    http://portal.lab:5000      (its source is in ~/app)\n'
+            printf '  scanner:   http://dast:8888            (the DAST icon on the desktop)\n'
+            printf '  user:      admin\n'
+            printf '  password:  student\n'
+            printf '  scan this: http://target:5000          (the portal, as the scanner sees it)\n' ;;
+    esac
+    printf '\n'
+}
+
+# ------------------------------------------------------------------ stop
+stop() {
+    local yes="${1:-}"
+    running || { d rm -f "$NAME" "$COMPANION" >/dev/null 2>&1; printf 'No lab is running.\n'; return; }
+    if [ "$yes" != -y ] && [ "$yes" != --yes ]; then
+        printf 'This deletes the lab machine and everything in it.\n'
+        read -r -p 'End it? [y/N] ' a
+        case "$a" in y|Y|yes|YES) ;; *) printf 'Kept running.\n'; return ;; esac
+    fi
+    d rm -f "$NAME" "$COMPANION" >/dev/null 2>&1
+    asroot rm -f "$STATE" 2>/dev/null || true
+    printf 'Lab ended.\n'
+}
+
+rdp_client() {
+    for c in xfreerdp3 xfreerdp sdl-freerdp3; do
+        command -v "$c" >/dev/null && { echo "$c"; return; }
+    done
+}
+
+desktop() {
+    local key; key="$(which_lab "${1:-}")"
+    running || start "$key"
+    local client; client="$(rdp_client)"
+    if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && [ -n "$client" ]; then
+        printf 'Opening the lab desktop...\n'
+        mkdir -p "$HOME/.cache"
+        nohup "$client" /v:"127.0.0.1:${RDP_PORT}" /u:student /p:"$(password)" \
+            /cert:ignore /dynamic-resolution +clipboard /size:90% /title:"Hackrange Mentorship Lab" \
+            >"$HOME/.cache/hackrange-mentorship-rdp.log" 2>&1 &
+        disown
+    else
+        printf '\nThis machine has no screen to open the desktop on.  Open it in a web\n'
+        printf 'browser on your own computer instead:\n'
+        info
+    fi
+}
+
+ssh_in() {
+    local key; key="$(which_lab "${1:-}")"
+    running || start "$key"
+    printf '\nConnecting with SSH as student.  When it asks for the password, type:\n'
+    printf '    %s\n' "$(password)"
+    printf '(Nothing shows while you type a password; that is normal.  Type exit to leave.)\n\n'
+    exec ssh -p "$SSH_PORT" -o StrictHostKeyChecking=accept-new student@127.0.0.1
+}
+
+chk() {
+    if eval "$2" >/dev/null 2>&1; then printf '  \e[32m[ok]\e[0m    %s\n' "$1"
+    else printf '  \e[31m[down]\e[0m  %s   %s\n' "$1" "$3"; fi
+}
+
+status() {
+    bold "Hackrange Mentorship Local Lab"
+    chk "Docker" "d info" "sudo systemctl restart docker"
+    chk "web desktop (https://127.0.0.1:$WEB_PORT)" \
+        "curl -fsS -o /dev/null https://127.0.0.1:$WEB_PORT/guacamole/" "sudo systemctl restart nginx"
+    for c in hackrange-mentorship-guacd hackrange-mentorship-guacamole; do
+        chk "$c" "[ \"\$(d inspect -f '{{.State.Running}}' $c)\" = true ]" "sudo docker restart $c"
+    done
+    printf '\n'
+    local r k img
+    while IFS= read -r r; do
+        [ -n "$r" ] || continue
+        k="$(field "$r" 1)"; img="$(field "$r" 2)"
+        chk "image for the $k lab" "d image inspect $img" "sudo $HR_ROOT/install.sh"
+    done <<< "$(grep -vE '^\s*#|^\s*$' "$CATALOG")"
+    printf '\n'
+    if running; then
+        printf '  \e[32m[ok]\e[0m    the %s lab is running\n' "$(asroot cat "$STATE" 2>/dev/null)"
+    else
+        printf '  [off]   no lab running       start one with: hackrange-lab start <lab>\n'
+    fi
+}
+
+case "${1:-help}" in
+    list)    list ;;
+    info)    info ;;
+    start)   start "${2:-}" ;;
+    desktop) desktop "${2:-}" ;;
+    shell)   in_lab 'exec bash -l' ;;
+    ssh)     ssh_in "${2:-}" ;;
+    env)     env_for "" "${2:-}" ;;
+    check)   exec /usr/local/bin/hackrange-check "${2:-}" ;;
+    stop)    stop "${2:-}" ;;
+    reset)   k="$(which_lab "${2:-}")"; stop -y >/dev/null; start "$k" ;;
+    status)  status ;;
+    update)  exec sudo bash "$HR_ROOT/install.sh" ;;
+    diag)    exec sudo /usr/local/sbin/hackrange-diag ;;
+    help|-h|--help) sed -n '2,/^# Author/p' "$0" | sed '$d; s/^# \{0,1\}//' ;;
+    *) fail "Unknown command: $1   (try: hackrange-lab help)" ;;
+esac

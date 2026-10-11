@@ -1,0 +1,15 @@
+{
+  "Bucket": "nimbuspay-customer-exports",
+  "Policy": {
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Sid": "FLAGs3PublicRead",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::nimbuspay-customer-exports/*"
+    }]
+  },
+  "Contents": ["customers_2026.csv", "kyc_documents/", "FLAG-s3-public-bucket-world-readable.txt"],
+  "PublicAccessBlock": "disabled"
+}

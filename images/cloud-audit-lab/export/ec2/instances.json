@@ -1,0 +1,23 @@
+{
+  "Instances": [
+    {
+      "InstanceId": "i-0web01",
+      "Name": "web-01",
+      "PublicIp": "203.0.113.10",
+      "IamInstanceProfile": "arn:aws:iam::111122223333:instance-profile/web-role",
+      "MetadataOptions": {
+        "HttpTokens": "optional",
+        "_comment": "optional = IMDSv1 allowed. An SSRF in the app can read the role credentials. FLAG-imdsv1-metadata-exposed"
+      }
+    },
+    {
+      "InstanceId": "i-0app02",
+      "Name": "app-02",
+      "IamInstanceProfile": "arn:aws:iam::111122223333:instance-profile/app-role",
+      "MetadataOptions": {
+        "HttpTokens": "required",
+        "_comment": "required = IMDSv2 enforced. This one is configured correctly."
+      }
+    }
+  ]
+}

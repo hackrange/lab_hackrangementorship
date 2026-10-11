@@ -1,93 +1,142 @@
-# lab_hackrangementorship
+# Hackrange Mentorship: the Local Lab
 
+Every hands-on lab from the **Hackrange Mentorship** course, installed on a
+machine of your own with one command.
 
+The hosted labs run in your browser and need nothing but a login. This is the
+same set of labs on your own virtual machine, for working offline, keeping a
+lab running for days, or simply seeing how the whole thing is put together.
 
-## Getting started
+## Installing it
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+On an Ubuntu 22.04 or newer machine:
 
 ```
-cd existing_repo
-git remote add origin http://git.hackrange.com/trice/lab_hackrangementorship.git
-git branch -M main
-git push -uf origin main
+curl -fsSL https://raw.githubusercontent.com/hackrange/lab_hackrangementorship/main/install.sh | sudo bash
 ```
 
-## Integrate with your tools
+That is all of it. The installer checks the machine, installs Docker if it is
+missing, builds the lab images, and sets up the web desktop. Run the same
+command again at any time to update the lab or to finish an install that
+stopped partway: each step checks what is already there.
 
-* [Set up project integrations](http://git.hackrange.com/trice/lab_hackrangementorship/-/settings/integrations)
+Everything lands in `/opt/hackrange-mentorship`, with settings in
+`/etc/hackrange-mentorship` and a log at
+`/var/log/hackrange-mentorship-install.log`.
 
-## Collaborate with your team
+### What the machine needs
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+|          | minimum | recommended |
+| -------- | ------- | ----------- |
+| processors | 2 | 4 |
+| memory   | 8 GB | 16 GB |
+| free disk | 60 GB | 100 GB |
 
-## Test and Deploy
+One lab runs at a time, and the largest asks for 3GB of memory. The disk goes
+mostly on the lab images, which come to about 15GB once built, with room for
+the downloads the build pulls in.
 
-Use the built-in continuous integration in GitLab.
+### On an Apple Silicon or other ARM machine
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+Six of the seven labs run natively. The Splunk labs (weeks 8 to 10) cannot:
+Splunk publishes no ARM build for Linux at all, so that one image is built and
+run as x86 under emulation. It works, and it is slower. Everything else is
+unaffected.
 
-***
+## Using it
 
-# Editing this README
+```
+hackrange-lab list              the labs, and the course weeks each one is for
+hackrange-lab start netlab      start the lab your lesson names
+hackrange-lab info              how to get in: web address, username, password
+hackrange-lab env               the lab's own usernames and passwords
+hackrange-lab check             mark your own findings against the answer key
+hackrange-lab stop              end the lab
+hackrange-lab status            is everything running?
+hackrange-lab update            get the latest version
+hackrange-lab diag              save a diagnostics file to send for help
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### The labs
 
-## Suggestions for a good README
+| lab | weeks | what it is for |
+| --- | ----- | -------------- |
+| `kali` | 1 | Networking foundations: addresses, subnets, IPv6, reading a machine |
+| `netlab` | 2-4 | DNS, routing, the firewall, server hardening and the CIS Controls |
+| `analyst` | 5-7 | Audit evidence, and hunting shadow SaaS and shadow AI |
+| `splunk` | 8-10 | Splunk: first searches, Operation Quiet Vendor, detection engineering |
+| `webapp` | 11 | Source-driven web app review with AI |
+| `webapp-gui` | 11 | The AI-assisted security review: desktop, Burp, and a DAST scanner |
+| `cloud` | 12 | Auditing a misconfigured cloud account |
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Each lab is a separate machine, and one runs at a time. Starting another swaps
+it over. A lab is disposable: stopping it deletes it and everything inside, so
+anything you want to keep belongs on your own machine.
 
-## Name
-Choose a self-explaining name for your project.
+### Getting in
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+`hackrange-lab info` prints the ways in. There are three, and they all use the
+same username (`student`) and the same password, which changes every time you
+start a lab:
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+- **a web browser**, at `https://<this machine>:8456` — nothing to install
+- **SSH**, on port 2223
+- **Remote Desktop**, on port 13489
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+The browser opens whatever the running lab actually is: a desktop for the
+analyst, Splunk and Week 11 challenge labs, and a terminal for the rest.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+All three answer only on private networks, never from the internet, whatever
+the password. If you forward one of these ports on your router, the connection
+arrives from a public address and is refused.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+### The certificate warning
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+The web desktop is served with a certificate from this machine's own
+certificate authority, so a browser will warn you the first time. To make the
+warning go away, download `https://<this machine>:8456/lab-ca.crt` and tell
+your own computer to trust it. That authority is constrained: it can vouch only
+for lab names and private addresses, never for a real website, so trusting it
+cannot be used against you elsewhere.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+### Checking your work
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+Two of the challenges hide a marker behind each real finding, reachable only by
+exploiting or locating it properly. Write what you find in `~/findings.txt`
+inside the lab, then:
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+```
+hackrange-lab check
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+It tells you how many of them you have, and describes what is still missing in
+plain words rather than printing the answer. When you want the key in full,
+`hackrange-lab check <lab> --reveal`.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+The other challenges are a piece of reasoning rather than a string to find, and
+those labs carry the instructor's own answer key: `check` runs it so you can
+compare your working to it.
 
-## License
-For open source projects, say how it is licensed.
+## Removing it
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+```
+sudo /opt/hackrange-mentorship/uninstall.sh
+```
+
+## Testing a change
+
+`tests/rehearse.sh` starts every lab the way a student meets it and asks the
+questions its lessons depend on: does the door open, is the tool the lesson
+names installed, does the command the lesson prints return something real.
+
+```
+sudo tests/rehearse.sh            every lab
+sudo tests/rehearse.sh netlab     one of them
+```
+
+## Reporting a problem
+
+Security issues: see [SECURITY.md](SECURITY.md). Anything else: open an issue,
+and attach the file `hackrange-lab diag` writes, which is redacted.
+
+Author: Tim Rice

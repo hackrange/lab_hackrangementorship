@@ -1,0 +1,7 @@
+{
+  "TrailName": "nimbuspay-trail",
+  "IsLogging": false,
+  "IsMultiRegionTrail": false,
+  "S3BucketName": "nimbuspay-cloudtrail",
+  "_comment": "Logging is OFF and single-region. There is no record of who does what. FLAG-cloudtrail-logging-disabled"
+}
