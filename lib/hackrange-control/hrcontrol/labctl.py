@@ -19,12 +19,15 @@ Author: Tim Rice - tim.j.rice@hackrange.com
 
 from __future__ import annotations
 
+import re
+import socket
 import threading
 import time
 
 from . import catalog
-from .const import (COMPANION_CONTAINER, HACKRANGE_CHECK, HACKRANGE_LAB,
-                    LAB_CONTAINER)
+from .const import (COMPANION_CONTAINER, GUAC_CONTAINER, GUAC_MAPPING,
+                    GUAC_UPSTREAM, HACKRANGE_CHECK, HACKRANGE_LAB,
+                    LAB_CONTAINER, RDP_INNER, SSH_INNER)
 from .labinfo import current_lab
 from .run import DOCKER, run
 
@@ -51,6 +54,55 @@ def image_present(image: str) -> bool:
     return run([DOCKER, "image", "inspect", image], timeout=15)[0] == 0
 
 
+def _port_open(port: int) -> bool:
+    """Is the lab's own door answering on this machine yet?"""
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=1.5):
+            return True
+    except OSError:
+        return False
+
+
+def _mapping_protocol() -> str:
+    """Which protocol the web desktop is currently set up to speak.
+
+    hackrange-access writes this file each time a lab starts, and Guacamole
+    reads it.  Until it names the running lab's protocol, the web desktop is
+    still offering the lab before this one.
+    """
+    try:
+        with open(GUAC_MAPPING) as fh:
+            m = re.search(r"<protocol>\s*([a-z]+)\s*</protocol>", fh.read())
+    except OSError:
+        return ""
+    return m.group(1) if m else ""
+
+
+def ready(lab: dict) -> bool:
+    """Can a student actually open this lab right now?
+
+    Not the same question as "is the container running", which is what this
+    used to answer and why the panel offered an Open button a couple of
+    minutes before the lab would accept anybody.  Three things have to be true,
+    and each of them is false for a while after the container appears:
+
+      - the lab's own door answers.  A desktop lab has to finish starting
+        xrdp and an X session, which on an emulated lab takes a while.
+      - the web desktop is running AND answering.  It is restarted on every
+        lab start, deliberately, to end sessions that still hold the previous
+        lab's connection, so for a few seconds it is up and not yet serving.
+      - the web desktop's connection names THIS lab's protocol.  It is
+        rewritten on every start, and until it has been, the browser would
+        offer a terminal for a desktop lab or the other way round, and would
+        not connect at all.
+    """
+    inner = SSH_INNER if lab.get("proto") == "ssh" else RDP_INNER
+    return (_port_open(inner)
+            and _container_running(GUAC_CONTAINER)
+            and _port_open(GUAC_UPSTREAM)
+            and _mapping_protocol() == lab.get("proto"))
+
+
 def states() -> dict[str, str]:
     """Every lab's state, as the page shows it."""
     running_key = current_lab()
@@ -61,7 +113,7 @@ def states() -> dict[str, str]:
         if key in _busy:
             out[key] = _busy[key]
         elif key == running_key and up:
-            out[key] = "running"
+            out[key] = "running" if ready(lab) else "preparing"
         elif not image_present(lab["image"]):
             out[key] = "not-built"
         else:

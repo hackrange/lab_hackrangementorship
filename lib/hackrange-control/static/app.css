@@ -66,6 +66,7 @@ main.container { padding-top: 22px; padding-bottom: 12px; display: flex; flex-di
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
 .component { display: flex; flex-direction: column; gap: 8px; }
 .component.is-running { border-left: 4px solid var(--green); }
+.component.is-preparing { border-left: 4px solid var(--amber); }
 .comp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .comp-name { font-size: 16px; }
 .tag { display: inline-block; margin: 4px 4px 0 0; font-size: 11.5px; color: var(--muted); background: #F2F2F2;
@@ -88,10 +89,11 @@ main.container { padding-top: 22px; padding-bottom: 12px; display: flex; flex-di
         border-radius: 99px; padding: 3px 10px; background: #EEE; color: var(--muted); }
 .pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 .pill-running { background: #E7F6E6; color: var(--green); }
-.pill-starting, .pill-stopping, .pill-checking { background: #FFF3DF; color: var(--amber); }
+.pill-starting, .pill-stopping, .pill-checking, .pill-preparing { background: #FFF3DF; color: var(--amber); }
 .pill-stopped { background: #FBE7E6; color: var(--red); }
 .pill-muted, .pill-not-built, .pill-unknown { background: #EFEFEF; color: var(--muted); }
-.pill-starting::before, .pill-stopping::before, .pill-checking::before { animation: pulse 1s infinite alternate; }
+.pill-starting::before, .pill-stopping::before, .pill-checking::before,
+.pill-preparing::before { animation: pulse 1s infinite alternate; }
 @keyframes pulse { from { opacity: .3; } to { opacity: 1; } }
 
 /* ---- buttons ---- */

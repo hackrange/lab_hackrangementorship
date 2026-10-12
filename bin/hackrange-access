@@ -28,6 +28,8 @@ WEB_PORT=8456
 SSH_PORT=2223
 RDP_PORT=13489
 LAB_CONTAINER=hackrange-mentorship-lab
+GUAC_CONTAINER=hackrange-mentorship-guacamole
+GUAC_UPSTREAM=18091                    # what the guacamole container listens on, loopback only
 CATALOG="$HR_ROOT/config/labs.conf"
 STATE="$HR_ETC/current-lab"
 GUAC_GROUP=hackrange-mentorship-guac   # a system group; the guacamole container is given it (compose group_add)
@@ -104,8 +106,7 @@ rotate() {
     ( umask 077; printf '# The lab login password.  Replaced at every new session.\nLAB_ACCESS_PASSWORD=%s\n' "$pw" > "$ACCESS.tmp" )
     mv "$ACCESS.tmp" "$ACCESS"
 
-    # The web desktop's login, and the Remote Desktop connection it opens.  The
-    # guacamole service notices the change within seconds: no restart.
+    # The web desktop's login, and the connection it opens.
     # A dedicated system group, not the image's own group id: on the host that
     # number is usually a real person's group (the second account made).
     getent group "$GUAC_GROUP" >/dev/null || groupadd --system "$GUAC_GROUP"
@@ -165,6 +166,32 @@ EOF
     chown root:"$GUAC_GROUP" "$GUAC_DIR/user-mapping.xml.tmp"
     chmod 640 "$GUAC_DIR/user-mapping.xml.tmp"
     mv "$GUAC_DIR/user-mapping.xml.tmp" "$GUAC_DIR/user-mapping.xml"
+
+    # Then end every web desktop session, by restarting the service that holds
+    # them.
+    #
+    # Rewriting the file above is not enough, and believing it was cost an
+    # afternoon.  A browser that is already signed in keeps the connection it
+    # was given when it signed in, so after switching from a terminal lab to a
+    # desktop one it went on asking for SSH: guacd logged "SSH handshake
+    # failed" against a desktop lab that has no sshd, and the student was shown
+    # a blank screen with no reason for it.  A fresh sign in got the right
+    # connection, which is what made it look intermittent.
+    #
+    # There is nothing to preserve by being gentler.  The password has just
+    # changed, so every session that existed a moment ago was signed in with a
+    # password that is no longer the lab's, and the lab those sessions were
+    # looking at has been deleted.
+    if [ -n "$(docker ps -q -f "name=^${GUAC_CONTAINER}$" 2>/dev/null)" ]; then
+        docker restart "$GUAC_CONTAINER" >/dev/null 2>&1 || true
+        # Wait for it to answer again, so "hackrange-lab start" does not finish
+        # by telling a student to open an address that is not up yet.
+        local i
+        for i in $(seq 1 60); do
+            curl -fsS -o /dev/null "http://127.0.0.1:$GUAC_UPSTREAM/guacamole/" 2>/dev/null && break
+            sleep 1
+        done
+    fi
 }
 
 # ---------------------------------------------------------------- certificate
