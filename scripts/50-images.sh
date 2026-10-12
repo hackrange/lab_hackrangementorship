@@ -51,6 +51,44 @@ if [ "$ARCH" != amd64 ]; then
     else
         ok "x86 emulation is already set up"
     fi
+
+    # The "C" flag, or sudo does not work inside an emulated container.
+    # Without it the kernel starts the interpreter without applying the setuid
+    # bit of the program being interpreted, so sudo keeps the student's own
+    # user id and refuses with "effective uid is not 0 ... nosuid?".  Every
+    # Splunk lesson that uses sudo stops there, and nothing about the message
+    # points at emulation.
+    #
+    # This is checked rather than assumed because the two ways of registering
+    # the handler disagree: the one a container installs carries the flag, and
+    # the one the apt package installed on a real ARM machine did not.  It is
+    # also checked when emulation was already set up, because that is the case
+    # the ARM machine was in.
+    handler=/proc/sys/fs/binfmt_misc/qemu-x86_64
+    if [ -e "$handler" ] && ! grep -q '^flags:.*C' "$handler"; then
+        src=/usr/lib/binfmt.d/qemu-x86_64.conf
+        if [ -r "$src" ]; then
+            # Only the last field, the flags, is rewritten: the magic bytes
+            # that decide what an x86 program looks like stay exactly as the
+            # package wrote them.  A file in /etc/binfmt.d overrides the one
+            # of the same name in /usr/lib/binfmt.d.
+            install -d -m 755 /etc/binfmt.d
+            # index(), not a negated match: "!~" is history expansion in an
+            # interactive shell, so the same line pasted into a terminal to
+            # check it by hand dies with "event not found".
+            awk -F: 'BEGIN { OFS=":" } { if (index($NF, "C") == 0) $NF = $NF "C"; print }' \
+                "$src" > /etc/binfmt.d/qemu-x86_64.conf
+            quiet systemctl restart systemd-binfmt || true
+        else
+            quiet docker run --privileged --rm tonistiigi/binfmt --install amd64 || true
+        fi
+        if grep -q '^flags:.*C' "$handler" 2>/dev/null; then
+            ok "x86 emulation honours setuid, so sudo works in the Splunk labs"
+        else
+            warn "x86 emulation does not honour setuid on this machine, so sudo will"
+            warn "not work inside the Splunk labs.  See: cat $handler"
+        fi
+    fi
 fi
 
 # build <dir> <tag> [platform]
