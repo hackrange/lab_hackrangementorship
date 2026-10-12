@@ -7,7 +7,7 @@
 #   4. reset.py applies the schema and seeds the admin/student login
 #   5. exec uvicorn on 0.0.0.0:8888 so the Kali box reaches it as http://dast:8888
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -e
 
 DATADIR=/var/lib/mysql

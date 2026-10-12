@@ -21,7 +21,7 @@
 # The CSVs are baked in rather than fetched at runtime, so the challenge can
 # never break again because a web host stopped serving them.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 FROM debian:12-slim
 
 ENV DEBIAN_FRONTEND=noninteractive

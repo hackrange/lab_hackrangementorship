@@ -35,4 +35,4 @@ The Local Lab is meant to run on a private virtual machine for one student.
 Its services only answer on private network addresses, and it should never be
 exposed to the internet.
 
-Author: Tim Rice
+Author: Tim Rice - tim.j.rice@hackrange.com

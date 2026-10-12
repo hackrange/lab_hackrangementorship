@@ -1,6 +1,6 @@
 #!/bin/bash
 # Set the student password from the broker-supplied env, start dbus, run xrdp.
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -e
 
 if [ -n "${LAB_PASSWORD}" ]; then

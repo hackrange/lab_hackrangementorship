@@ -152,4 +152,4 @@ sudo tests/rehearse.sh netlab     one of them
 Security issues: see [SECURITY.md](SECURITY.md). Anything else: open an issue,
 and attach the file `hackrange-lab diag` writes, which is redacted.
 
-Author: Tim Rice
+Author: Tim Rice - tim.j.rice@hackrange.com

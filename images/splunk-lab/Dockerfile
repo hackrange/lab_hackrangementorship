@@ -15,7 +15,7 @@
 # never a factor. Splunk is switched to the Free license, which removes the login
 # and the trial clock, so a student lands straight in the search app.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 FROM debian:12-slim
 
 ENV DEBIAN_FRONTEND=noninteractive

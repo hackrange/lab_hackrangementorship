@@ -7,7 +7,7 @@
 # Each step is its own script, numbered in the order they must run, and each
 # one is safe to run again.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 
 set -Eeuo pipefail
 HR_ROOT="${HR_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

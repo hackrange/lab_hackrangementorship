@@ -9,7 +9,7 @@
 #
 # Usage:  lab-shadow-answers            summary
 #         lab-shadow-answers --show     also print the commands
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -u
 
 # secure_path lacks /usr/local/bin under sudo; the file is world-readable so no

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed the portal database and report files. Author: Tim Rice"""
+"""Seed the portal database and report files. Author: Tim Rice - tim.j.rice@hackrange.com"""
 import os, sqlite3
 here = os.path.dirname(__file__)
 c = sqlite3.connect(os.path.join(here, "portal.db"))

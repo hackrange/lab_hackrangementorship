@@ -11,7 +11,7 @@
 #     screen is a student, not an administrator.
 #   - The full detail goes to the log, so a failure can be diagnosed later.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 
 set -Eeuo pipefail
 

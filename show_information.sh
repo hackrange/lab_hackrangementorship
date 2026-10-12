@@ -7,7 +7,7 @@
 # (It may ask for your Ubuntu password, because the lab password is kept where
 # only an administrator can read it.)
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 if [ ! -x /usr/local/sbin/hackrange-access ]; then
     echo "The Local Lab is not installed yet.  See the README for the install command."
     exit 1

@@ -18,7 +18,7 @@
 # localhost, because Firefox refuses to send localhost through a proxy and the
 # whole point of the lesson is watching the traffic in Burp.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 FROM kalilinux/kali-rolling
 
 ENV DEBIAN_FRONTEND=noninteractive

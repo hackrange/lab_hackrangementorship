@@ -11,7 +11,7 @@
 # Everything is ephemeral and deliberately weakly-credentialed on purpose: it is
 # a disposable teaching instance, never a real deployment.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 FROM nextgen-dast:2.1.1
 
 ENV DEBIAN_FRONTEND=noninteractive

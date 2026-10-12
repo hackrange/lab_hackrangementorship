@@ -24,7 +24,7 @@
 #
 # Usage:  lab-audit-answers            summary
 #         lab-audit-answers --show     also print the commands
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -u
 
 DIR="${AUDIT_DIR:-/home/student/audit}"

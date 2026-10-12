@@ -1,6 +1,6 @@
 #!/bin/bash
 # Start Splunk, set the student's RDP password, run the desktop.
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -e
 [ -n "${LAB_PASSWORD}" ] && echo "student:${LAB_PASSWORD}" | chpasswd || passwd -l student >/dev/null 2>&1 || true
 mkdir -p /run/dbus; rm -f /run/dbus/pid; dbus-daemon --system --fork 2>/dev/null || true

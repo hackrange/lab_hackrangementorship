@@ -10,7 +10,7 @@
 # localhost, is what lets Burp see the traffic: Firefox refuses to send
 # localhost through a proxy.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -e
 # Docker regenerates /etc/hosts each start, so the name is added here too.
 grep -q 'portal.lab' /etc/hosts 2>/dev/null || echo '127.0.0.1  portal.lab' >> /etc/hosts

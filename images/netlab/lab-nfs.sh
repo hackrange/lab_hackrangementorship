@@ -7,7 +7,7 @@
 # which is exactly the enumeration an attacker or an assessor performs against a
 # real file server.  So this starts the enumeration surface, not a file server.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -u
 
 # Same reason as lab-dns: rpcbind, rpc.mountd, and exportfs all need root, and

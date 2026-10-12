@@ -9,7 +9,7 @@
 # The CA is made once.  The service certificate is renewed when it is within a
 # month of expiring, which a re-run of the installer takes care of.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 # shellcheck source=lib.sh
 . "$HR_ROOT/scripts/lib.sh"
 

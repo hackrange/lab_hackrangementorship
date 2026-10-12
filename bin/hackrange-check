@@ -18,7 +18,7 @@
 # carry the instructor's own answer key, so this runs it and the student
 # compares their working to it, which is the honest version of checking.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -uo pipefail
 
 HR_ROOT=/opt/hackrange-mentorship

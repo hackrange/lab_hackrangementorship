@@ -14,7 +14,7 @@
 # So this is the only thing that differs, and it is set by running this rather
 # than by hand editing three files and missing one.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

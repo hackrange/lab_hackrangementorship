@@ -17,7 +17,7 @@
 #                 for a desktop.  The pids number matters: too low and Firefox
 #                 dies with "Compositor thread not started".
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 
 # lab_run_opts <proto> <caps>  ->  prints the docker arguments
 lab_run_opts() {

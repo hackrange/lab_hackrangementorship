@@ -24,7 +24,7 @@ Vulnerability map (for the instructor; students discover these):
   /profile        properly escaped output                        SAFE (decoy)
 
 Do not deploy this anywhere real. It exists to be broken.
-Author: Tim Rice
+Author: Tim Rice - tim.j.rice@hackrange.com
 """
 
 import os

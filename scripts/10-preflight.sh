@@ -7,7 +7,7 @@
 # to install anyway on a machine below the minimum (it will be slow, and the
 # Kubernetes days may not fit).
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 # shellcheck source=lib.sh
 . "$HR_ROOT/scripts/lib.sh"
 

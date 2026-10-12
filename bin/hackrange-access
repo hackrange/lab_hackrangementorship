@@ -15,7 +15,7 @@
 #
 # Runs as root (hackrange-lab calls it through sudo).
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -euo pipefail
 
 HR_ETC=/etc/hackrange-mentorship

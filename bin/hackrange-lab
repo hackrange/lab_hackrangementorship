@@ -25,7 +25,7 @@
 # Some commands ask for your Ubuntu password: the lab password is kept where
 # only an administrator can read it.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -uo pipefail
 
 HR_ROOT=/opt/hackrange-mentorship

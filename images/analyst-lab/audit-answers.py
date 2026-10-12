@@ -23,7 +23,7 @@ Three traps live in that data:
      quietly breaks every comparison.
 
 Usage:  python3 audit-answers.py [--dir /home/student/audit] [--list]
-Author: Tim Rice
+Author: Tim Rice - tim.j.rice@hackrange.com
 """
 
 import argparse

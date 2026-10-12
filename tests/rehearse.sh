@@ -15,7 +15,7 @@
 # Usage:  tests/rehearse.sh [lab ...]     (default: every lab in the catalog)
 #         BUILD=1 tests/rehearse.sh       build each image from source first
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

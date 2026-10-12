@@ -12,7 +12,7 @@
 # it finishes a half done install, and on a finished one it updates the lab to
 # the latest version of this repository.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 
 set -Eeuo pipefail
 

@@ -11,7 +11,7 @@
 # is built and run as x86_64 under emulation.  That is slower, and it is the
 # only way those lessons can run on Apple Silicon at all.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 

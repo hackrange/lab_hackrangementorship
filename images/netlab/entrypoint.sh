@@ -2,7 +2,7 @@
 # Set the student password from the broker-supplied env, then run sshd.
 # named is deliberately NOT started here: launching their own DNS server is part
 # of the lesson, and they use "lab-dns start" to do it.
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -e
 
 if [ -n "${LAB_PASSWORD}" ]; then

@@ -11,7 +11,7 @@
 #
 # SSH-delivered and lean, like webapp-lab. Claude Code needs internet, so the
 # lesson runs this lab with net_mode 'full'.
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 FROM debian:12-slim
 
 ENV DEBIAN_FRONTEND=noninteractive

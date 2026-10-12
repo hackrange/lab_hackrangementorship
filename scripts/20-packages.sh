@@ -8,7 +8,7 @@
 # for yet falls back to Ubuntu's own docker.io packages.  Either way the step
 # ends by proving Docker works, rather than assuming it.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 # shellcheck source=lib.sh
 . "$HR_ROOT/scripts/lib.sh"
 # shellcheck disable=SC1091

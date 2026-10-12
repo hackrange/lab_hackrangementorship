@@ -8,7 +8,7 @@
 # lab network address, the lab certificate authority and the lab images.
 # Docker itself is left installed, because other things may use it.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -uo pipefail
 
 [ "$(id -u)" -eq 0 ] || { echo "Run this with sudo." >&2; exit 1; }

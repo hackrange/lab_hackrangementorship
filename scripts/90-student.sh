@@ -6,7 +6,7 @@
 # contained machine, so there is nothing to create an account on and the only
 # thing left to do is show the way in.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 

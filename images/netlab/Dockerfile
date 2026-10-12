@@ -22,7 +22,7 @@
 # only confuse a learner.  A lab-dns helper is provided instead, and the lessons
 # teach that command.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 FROM kalilinux/kali-rolling
 
 ENV DEBIAN_FRONTEND=noninteractive

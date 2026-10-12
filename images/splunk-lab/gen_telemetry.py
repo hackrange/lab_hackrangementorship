@@ -16,7 +16,7 @@ students to search "All time", because a baked index cannot know when the lab is
 being run. Volumes are modest so Splunk Free's 500MB/day limit is never touched.
 
 Deterministic: a fixed seed reproduces every file byte for byte.
-Author: Tim Rice
+Author: Tim Rice - tim.j.rice@hackrange.com
 """
 
 import argparse

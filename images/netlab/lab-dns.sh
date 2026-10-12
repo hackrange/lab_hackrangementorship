@@ -5,7 +5,7 @@
 # to run, and it fails here because there is no init system.  Rather than teach a
 # workaround mid-lesson, this wraps the few things a student actually needs.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -u
 
 # The student is logged in as an unprivileged user, but named needs root: it

@@ -7,7 +7,7 @@
 #    services.  systemctl and journalctl -u work just as on an installed Kali.
 #  - Under plain runc it is read-only and systemd cannot start, so tini runs
 #    as PID 1 and this script starts the same daemons by hand.
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -e
 
 # A fresh container has no history, so give it the rotated logs a machine that

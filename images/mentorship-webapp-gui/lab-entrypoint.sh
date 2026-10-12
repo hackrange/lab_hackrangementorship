@@ -7,7 +7,7 @@
 # this process never reach a desktop terminal, because a terminal opened from
 # the desktop is a child of the session manager and not of this script.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -e
 
 if [ -n "${LAB_PASSWORD:-}" ]; then

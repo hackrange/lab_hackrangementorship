@@ -6,7 +6,7 @@
 # registry, scanner or cluster to run, because every lab in this course is
 # self contained.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 

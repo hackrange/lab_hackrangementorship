@@ -7,7 +7,7 @@
 # the rest. Every extra RUN or COPY is another layer carried on disk on every
 # lab node, so config files are written here rather than copied in.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 FROM kalilinux/kali-rolling
 
 ENV DEBIAN_FRONTEND=noninteractive

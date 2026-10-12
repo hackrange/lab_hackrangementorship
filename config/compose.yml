@@ -8,7 +8,7 @@
 # Guacamole speaks RDP to whichever lab is running, by the container name
 # hackrange-mentorship-lab on the access network.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 x-logging: &logging
   driver: json-file
   options:

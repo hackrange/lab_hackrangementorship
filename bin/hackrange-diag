@@ -14,7 +14,7 @@
 # every collected file.  Anything shaped like a token, a password in a URL, or
 # a private key is removed as well, in case a log printed one we did not know.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -uo pipefail
 
 if [ "$(id -u)" -ne 0 ]; then

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Seed the DB, start the vulnerable app on localhost:5000, set the student's
-# password, run sshd. Author: Tim Rice
+# password, run sshd. Author: Tim Rice - tim.j.rice@hackrange.com
 set -e
 [ -n "${LAB_PASSWORD}" ] && echo "student:${LAB_PASSWORD}" | chpasswd || passwd -l student >/dev/null 2>&1 || true
 python3 /home/student/app/seed.py >/dev/null 2>&1 || true

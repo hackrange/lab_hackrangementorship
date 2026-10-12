@@ -9,7 +9,7 @@
 # Lean and SSH-delivered, like kali-lab-ssh: the work is reading source and
 # running curl, so no desktop is needed. Guacamole gives the student a terminal.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 FROM debian:12-slim
 
 ENV DEBIAN_FRONTEND=noninteractive

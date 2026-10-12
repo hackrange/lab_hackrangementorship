@@ -1,7 +1,7 @@
 #!/bin/bash
 # Per-login desktop fixups, run by the session.  Kept separate from the
 # entrypoint because these need the student's own session to exist.
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 set -u
 mkdir -p "$HOME/.config/xfce4/terminal"
 [ -f "$HOME/.config/xfce4/terminal/terminalrc" ] || \

@@ -5,7 +5,7 @@
 # is already there to save a diagnostics file.  Installing them again on every
 # run keeps them up to date with this copy of the lab.
 #
-# Author: Tim Rice
+# Author: Tim Rice - tim.j.rice@hackrange.com
 # shellcheck source=lib.sh
 . "$HR_ROOT/scripts/lib.sh"
 
