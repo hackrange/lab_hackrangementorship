@@ -40,8 +40,32 @@ the downloads the build pulls in.
 
 Six of the seven labs run natively. The Splunk labs (weeks 8 to 10) cannot:
 Splunk publishes no ARM build for Linux at all, so that one image is built and
-run as x86 under emulation. It works, and it is slower. Everything else is
-unaffected.
+run as x86 under emulation. Everything else is unaffected.
+
+Measured on the same lab on both kinds of machine:
+
+| | ARM, emulated | x86, native |
+|---|---|---|
+| Splunk serving a page | 13 ms | 1 ms |
+| a search counting events by sourcetype | 3.9 s | 0.3 s |
+
+Splunk itself is roughly twelve times slower and still perfectly workable: a
+search that answers in a third of a second on an x86 machine answers in about
+four. What is genuinely painful is the browser *inside* the lab's desktop,
+because every frame it draws is translated instruction by instruction and then
+sent to you over the remote desktop. Through that browser this lab feels close
+to unusable, and that is the emulator, not the lab.
+
+So on an ARM machine, do not use the browser inside the lab. Open Splunk from
+the browser you are already using, at port 8000 on the machine running the lab:
+
+    http://<the address of the Ubuntu machine>:8000
+
+`hackrange-lab env` prints that address next to the Splunk login, and
+`show_information.sh` lists it whenever the Splunk lab is running. Only Splunk
+is emulated then, and all the drawing happens natively on your own machine,
+which is the difference between waiting on every click and not noticing. The
+lab's desktop is still there for the lessons that use a terminal.
 
 ## Using it
 

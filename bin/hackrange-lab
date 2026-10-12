@@ -265,8 +265,8 @@ env_for() {
             # and its own Firefox is painfully slow, so the browser the student
             # already has open is both the faster route and the one they will
             # keep using.
-            printf '  address:   http://%s:8000        (from your own computer)\n' "$(address)"
-            printf '             http://localhost:8000     (inside the lab, or the desktop icon)\n'
+            printf '  address:   %-26s (from your own computer)\n' "http://$(address):8000"
+            printf '             %-26s (inside the lab, or the desktop icon)\n' "http://localhost:8000"
             printf '  user:      admin\n'
             printf '  password:  Changeme123\n' ;;
         webapp-gui)

@@ -126,6 +126,50 @@ start_lab() {
     return 0
 }
 
+# A lab has to survive the machine it runs on being rebooted.  Docker restarts
+# the SAME container then, writable layer and all, so anything a service wrote
+# into /run before the machine went down is still there when it starts again.
+# That is not hypothetical: a stale xrdp-sesman pid file put two of the desktop
+# labs into a restart loop that no reboot ever recovered from, and the web
+# desktop showed a login page with nothing behind it.  A restart is the cheapest
+# honest reproduction of a reboot, so every lab now gets one.
+restart_check() {
+    local key="$1" proto="$2"
+    docker restart "$NAME" >/dev/null 2>&1 || { bad "$key: would not restart"; return; }
+    local want=xrdp; [ "$proto" = ssh ] && want=sshd
+    if wait_door "$want"; then
+        ok "$key: comes back after a restart, as it must after a reboot"
+    else
+        bad "$key: does not come back after a restart" \
+            "a reboot would leave this lab permanently down: $(docker logs "$NAME" 2>&1 | tail -2)"
+    fi
+}
+
+# A lab whose catalog row publishes a web port has to listen on every address
+# inside the container.  A service bound to 127.0.0.1 there cannot be published
+# at all, so the address the student is handed would simply refuse them.
+web_checks() {
+    local key="$1" r w spec port code
+    r="$(row "$key")"; w="$(field "$r" 8)"
+    [ -n "$w" ] && [ "$w" != "-" ] || return 0
+    while IFS= read -r spec; do
+        [ -n "$spec" ] || continue
+        port="${spec%%/*}"
+        case "$port" in ''|*[!0-9]*) continue ;; esac
+        if inlab "ss -lnt 'sport = :$port'" 2>/dev/null | grep -qE '0\.0\.0\.0:'"$port"'|\*:'"$port"; then
+            ok "$key: port $port listens on every address, so it can be published"
+        else
+            bad "$key: port $port is not listening on every address" \
+                "the address a student is given for it would refuse them"
+        fi
+        code="$(inlab "curl -s -o /dev/null -w '%{http_code}' --max-time 60 http://127.0.0.1:$port/" 2>/dev/null)"
+        case "$code" in
+            2??|3??) ok "$key: port $port answers ($code)" ;;
+            *) bad "$key: port $port answered '$code'" "the student's browser would get nothing" ;;
+        esac
+    done <<< "$(printf '%s\n' "$w" | tr ',' '\n')"
+}
+
 # Every lab: the things true of all of them.
 common_checks() {
     local key="$1"
@@ -378,6 +422,7 @@ run_lab() {
     NAME=""; COMP=""; PNET=""
     if start_lab "$key"; then
         common_checks "$key"
+        web_checks "$key"
         case "$key" in
             kali)       lab_kali ;;
             netlab)     lab_netlab ;;
@@ -387,6 +432,8 @@ run_lab() {
             webapp-gui) lab_webapp_gui ;;
             cloud)      lab_cloud ;;
         esac
+        # Last, because it interrupts the container every other check just used.
+        restart_check "$key" "$(field "$(row "$key")" 3)"
     else
         FAILED_LABS+=("$key")
     fi
