@@ -160,6 +160,37 @@ start() {
 
     local platform; read -r -a platform <<< "$(lab_platform_opts "$image")"
 
+    # The web apps inside this lab that a student may open from their OWN
+    # browser, from the catalog's web column.  Most labs name none: see
+    # config/labs.conf for why that list is deliberately short.
+    #
+    # These bind every address, not just loopback, because the whole point is
+    # that the student reaches them from the machine they are sitting at.  On an
+    # ARM machine this is also what makes the Splunk lab usable at all, since
+    # driving it through the lab's own emulated Firefox is painfully slow.
+    local webports=() spec wp
+    local web; web="$(field "$r" 8)"
+    if [ -n "$web" ] && [ "$web" != "-" ]; then
+        while IFS= read -r spec; do
+            [ -n "$spec" ] || continue
+            wp="${spec%%/*}"
+            case "$wp" in ''|*[!0-9]*) continue ;; esac
+            # Refuse a port something else on this machine already answers on.
+            # Docker would fail the entire "docker run" over it, with a message
+            # about an address already in use that reads as though the lab were
+            # broken.  Naming the port, and what is holding it, is the whole
+            # difference between a student fixing this and a student stuck.
+            if command -v ss >/dev/null 2>&1 &&
+               ss -lnt "sport = :$wp" 2>/dev/null | grep -q LISTEN; then
+                fail "Something on this machine is already using port $wp, which the $key lab
+      needs for its web app.  Find it with:
+          sudo ss -lntp | grep ':$wp '
+      then stop it and start the lab again."
+            fi
+            webports+=(-p "$wp:$wp")
+        done <<< "$(printf '%s\n' "$web" | tr ',' '\n')"
+    fi
+
     # The Week 11 challenge has a scanner beside it on a private network, where
     # the two reach each other as 'dast' and 'target' and nothing else can.
     local netargs=(--network "$NET")
@@ -185,6 +216,7 @@ start() {
         -e "DAST_URL=http://dast:8888" -e "DAST_USER=admin" -e "DAST_PASSWORD=student" \
         -e "PORTAL_URL=http://portal.lab:5000" \
         -p "127.0.0.1:$SSH_INNER:22" -p "127.0.0.1:$RDP_INNER:3389" \
+        ${webports[@]+"${webports[@]}"} \
         "${keys[@]}" \
         --log-opt max-size=10m --log-opt max-file=3 \
         "$image" >/dev/null || fail "The $key lab would not start.  Try: hackrange-lab status"

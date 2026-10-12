@@ -40,6 +40,12 @@ current_lab()  { [ -r "$STATE" ] && cat "$STATE" 2>/dev/null || echo ""; }
 lab_row()      { grep -vE '^[[:space:]]*#|^[[:space:]]*$' "$CATALOG" 2>/dev/null | awk -F'|' -v k="$1" '$1==k {print; exit}'; }
 lab_protocol() { local r; r="$(lab_row "$(current_lab)")"; [ -n "$r" ] && echo "$r" | cut -d'|' -f3 || echo rdp; }
 lab_title()    { local r; r="$(lab_row "$(current_lab)")"; [ -n "$r" ] && echo "$r" | cut -d'|' -f7 || echo "Hackrange Mentorship Lab"; }
+# The web apps inside the running lab, as port/Label rows.  Empty for most
+# labs, deliberately: config/labs.conf says why.
+lab_web()      { local r; r="$(lab_row "$(current_lab)")"; [ -n "$r" ] || return 0
+                 local w; w="$(echo "$r" | cut -d'|' -f8)"
+                 [ -n "$w" ] && [ "$w" != "-" ] || return 0
+                 printf '%s\n' "$w" | tr ',' '\n'; }
 
 [ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
 
@@ -241,6 +247,29 @@ info() {
 
     printf '%s  Or any Remote Desktop app%s  (same username and password)\n' "$b" "$o"
     printf '      address:  %s:%s\n\n' "${ip:-127.0.0.1}" "$RDP_PORT"
+
+    # The running lab's own web app, opened straight from the student's browser
+    # rather than through the lab's desktop.  On an ARM machine this is the
+    # difference between a usable Splunk lab and an unusable one, because
+    # Splunk has no ARM build and the lab's own Firefox runs emulated.
+    local wspec wport wlabel shown=0
+    while IFS= read -r wspec; do
+        [ -n "$wspec" ] || continue
+        wport="${wspec%%/*}"; wlabel="${wspec#*/}"
+        [ "$wlabel" = "$wspec" ] && wlabel="the lab's web app"
+        if [ "$shown" -eq 0 ]; then
+            printf '%s  %s, in your own browser%s\n' "$b" "$wlabel" "$o"
+            shown=1
+        fi
+        if [ -n "$ip" ] && is_private "$ip"; then
+            printf '      From your own computer:   http://%s:%s/\n' "$ip" "$wport"
+        fi
+        printf '      From this Ubuntu machine: http://127.0.0.1:%s/\n' "$wport"
+    done <<< "$(lab_web)"
+    if [ "$shown" -eq 1 ]; then
+        printf '      Its own login is separate from the one above:  hackrange-lab env\n'
+        printf '      This is plain http, so use it only on your own network.\n\n'
+    fi
 
     # No lab services here.  Every lab in this course is a self contained
     # machine: the logins a lesson needs belong to whatever is running INSIDE
