@@ -48,7 +48,6 @@ GUAC_GROUP=hackrange-mentorship-guac   # a system group; the guacamole container
 current_lab()  { [ -r "$STATE" ] && cat "$STATE" 2>/dev/null || echo ""; }
 lab_row()      { grep -vE '^[[:space:]]*#|^[[:space:]]*$' "$CATALOG" 2>/dev/null | awk -F'|' -v k="$1" '$1==k {print; exit}'; }
 lab_protocol() { local r; r="$(lab_row "$(current_lab)")"; [ -n "$r" ] && echo "$r" | cut -d'|' -f3 || echo rdp; }
-lab_title()    { local r; r="$(lab_row "$(current_lab)")"; [ -n "$r" ] && echo "$r" | cut -d'|' -f7 || echo "Hackrange Mentorship Lab"; }
 # The web apps inside the running lab, as port/Label rows.  Empty for most
 # labs, deliberately: config/labs.conf says why.
 lab_web()      { local r; r="$(lab_row "$(current_lab)")"; [ -n "$r" ] || return 0
@@ -279,7 +278,19 @@ info() {
     if [ -n "$ip" ] && is_private "$ip"; then
         printf '      From your own computer:   https://%s:%s\n' "$ip" "$WEB_PORT"
     fi
-    printf '      From this Ubuntu machine: https://127.0.0.1:%s\n\n' "$WEB_PORT"
+    printf '      From this Ubuntu machine: https://127.0.0.1:%s\n' "$WEB_PORT"
+    # Which of the two connections to pick.  The web desktop offers both at all
+    # times, on purpose, and picking the wrong one opens a window that never
+    # connects: a terminal lab has no desktop in it and a desktop lab has no
+    # SSH.  The control panel's button picks for you, which is why it is listed
+    # first; this is for anyone who goes to the web desktop directly.
+    if [ "$(lab_protocol)" = ssh ]; then
+        printf '      Choose the connection named "... (terminal)": that is what\n'
+        printf '      the lab now running is.\n\n'
+    else
+        printf '      Choose the connection named "... (desktop)": that is what\n'
+        printf '      the lab now running is.\n\n'
+    fi
 
     printf '%s  Sign in with%s\n' "$b" "$o"
     printf '      username:  student\n'
