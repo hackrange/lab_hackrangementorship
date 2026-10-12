@@ -51,6 +51,13 @@ RUN useradd -m -s /bin/bash -G sudo student \
  && chmod 440 /etc/sudoers.d/student \
  && mkdir -p /home/student/Desktop /home/student/app /var/run/sshd \
  # xrdp: Guacamole connects over RDP on the standard 3389.
+ #
+ # The group membership is spelled out rather than left to the xrdp package's
+ # own postinst, which is where it went missing here.  xrdp reads its TLS key
+ # as the xrdp user, and Debian grants that by putting xrdp in the ssl-cert
+ # group; without it the RDP handshake failed before any password was asked
+ # for, guacd reported only "Upstream error", and the lab would not open.
+ && usermod -aG ssl-cert xrdp \
  && printf '%s\n' '#!/bin/sh' 'exec startxfce4' > /home/student/.xsession \
  && chmod +x /home/student/.xsession \
  # A desktop terminal must be a LOGIN shell, or the session's own values

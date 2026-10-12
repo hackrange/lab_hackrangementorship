@@ -33,8 +33,10 @@ SSH_INNER = 12223
 RDP_INNER = 13490
 GUAC_UPSTREAM = 18091   # what the web desktop itself listens on, loopback only
 
-# The web desktop's connection is named this and nothing else.  Guacamole
-# builds the address of a session from the connection's name, so a name that
-# changed with the lab gave every lab a different address and broke a student's
-# bookmark the moment they started a different one.
-GUAC_CONNECTION = "Hackrange Mentorship Lab"
+# The web desktop's two connection names, which never change.  Guacamole
+# builds the address of a session out of the connection's name, so a name that
+# moved with the lab gave every lab a different address.  There is one per
+# protocol, both defined at all times, and the panel links to whichever
+# matches the running lab: see hackrange-access, which writes them.
+GUAC_RDP_NAME = "Hackrange Mentorship Lab (desktop)"
+GUAC_SSH_NAME = "Hackrange Mentorship Lab (terminal)"

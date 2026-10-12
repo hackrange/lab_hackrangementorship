@@ -12,8 +12,8 @@ import base64
 import ipaddress
 import subprocess
 
-from .const import (ACCESS_ENV, GUAC_CONNECTION, RDP_PORT, SSH_PORT, STATE,
-                    WEB_PORT)
+from .const import (ACCESS_ENV, GUAC_RDP_NAME, GUAC_SSH_NAME, RDP_PORT,
+                    SSH_PORT, STATE, WEB_PORT)
 
 
 def _read_env(path: str) -> dict:
@@ -53,20 +53,22 @@ def machine_ip() -> str:
         return ""
 
 
-def desktop_url(host: str) -> str:
+def desktop_url(host: str, proto: str = "rdp") -> str:
     """The address that opens the running lab itself, not the sign in page.
 
     Guacamole names a session by base64 of "<connection>\\0c\\0<datasource>".
-    Building it here rather than asking the student to find it is the whole
-    point of an Open button, and it is the same for every lab because the
-    connection's name is fixed.
+    Building it here rather than asking a student to find it is the whole point
+    of an Open button.  There are two connections, one per protocol, and this
+    picks the one the running lab speaks: a terminal lab opened through the
+    desktop connection shows a black window and never connects.
     """
-    token = (GUAC_CONNECTION + "\0c\0default").encode()
+    name = GUAC_SSH_NAME if proto == "ssh" else GUAC_RDP_NAME
+    token = (name + "\0c\0default").encode()
     ident = base64.b64encode(token).decode().rstrip("=")
     return f"https://{host}:{WEB_PORT}/guacamole/#/client/{ident}"
 
 
-def info() -> dict:
+def info(proto: str = "rdp") -> dict:
     ip = machine_ip()
     host = ip or "127.0.0.1"
     return {
@@ -74,7 +76,7 @@ def info() -> dict:
         "username": "student",
         "password": access_password(),
         "web_host": f"https://{host}:{WEB_PORT}",
-        "desktop_url": desktop_url(host),
+        "desktop_url": desktop_url(host, proto),
         "ssh_host": f"ssh -p {SSH_PORT} student@{host}",
         "ssh_local": f"ssh -p {SSH_PORT} student@127.0.0.1",
         "rdp_host": f"{host}:{RDP_PORT}",

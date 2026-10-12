@@ -13,6 +13,18 @@ mkdir -p /run/dbus
 rm -f /run/dbus/pid
 dbus-daemon --system --fork 2>/dev/null || true
 
+# xrdp reads its TLS key as the xrdp user, which Debian allows by putting xrdp
+# in the ssl-cert group.  One of these images was built without that
+# membership, so xrdp could not read /etc/ssl/private/ssl-cert-snakeoil.key:
+# the RDP handshake then failed before any password was asked for, guacd said
+# only "Upstream error", and the student met a lab that would not open and no
+# reason why.  Group membership is read when xrdp starts, so putting it right
+# here is enough, and doing it here means an image already built with the
+# fault is cured by starting it.
+if getent group ssl-cert >/dev/null 2>&1 && id xrdp >/dev/null 2>&1; then
+    id -nG xrdp 2>/dev/null | grep -qw ssl-cert || usermod -aG ssl-cert xrdp 2>/dev/null || true
+fi
+
 # Clear the run state left behind by the PREVIOUS life of this container.
 # Docker restarts a container after a reboot or a crash with its writable layer
 # intact, so the pid file xrdp-sesman wrote before the machine went down is

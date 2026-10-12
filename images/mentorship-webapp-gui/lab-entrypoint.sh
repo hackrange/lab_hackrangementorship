@@ -36,6 +36,18 @@ done
 # from a desktop icon needs xdg-open to resolve to something real.
 export BROWSER=/usr/bin/xdg-open
 
+# xrdp reads its TLS key as the xrdp user, which Debian allows by putting xrdp
+# in the ssl-cert group.  One of these images was built without that
+# membership, so xrdp could not read /etc/ssl/private/ssl-cert-snakeoil.key:
+# the RDP handshake then failed before any password was asked for, guacd said
+# only "Upstream error", and the student met a lab that would not open and no
+# reason why.  Group membership is read when xrdp starts, so putting it right
+# here is enough, and doing it here means an image already built with the
+# fault is cured by starting it.
+if getent group ssl-cert >/dev/null 2>&1 && id xrdp >/dev/null 2>&1; then
+    id -nG xrdp 2>/dev/null | grep -qw ssl-cert || usermod -aG ssl-cert xrdp 2>/dev/null || true
+fi
+
 # Stale run state from a committed image: a /tmp/.X11-lock names a pid that is
 # very likely alive as something unrelated in a fresh container, so X decides
 # display :0 is taken and refuses to start, leaving a lab that boots to nothing.

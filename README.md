@@ -89,9 +89,13 @@ hidden until you ask for it.
 
 One lab runs at a time, because there is one web desktop for it to answer on.
 Starting a lab therefore ends the one before it and deletes everything in it,
-and the panel says so before it does it.  Starting a lab also gives it a new
-password; the panel shows the new one as soon as the lab is up, and you stay
-signed in.
+and the panel says so before it does it.
+
+A lab takes a minute or two to be ready, and a desktop lab longer than a
+terminal one.  Its card says **Preparing** until the lab will really let you
+in, and only then offers the button to open it, so the button is never a
+promise the lab cannot keep.  Starting a lab does not change your password and
+does not sign you out, of the panel or of the web desktop.
 
 ### The terminal
 
@@ -126,10 +130,11 @@ anything you want to keep belongs on your own machine.
 ### Getting in
 
 `hackrange-lab info` prints the ways in. There are three, and they all use the
-same username (`student`) and the same password, which changes every time you
-start a lab:
+same username (`student`) and the same password. The password is made when you
+install the lab and lasts until you ask for a new one with `hackrange-lab
+reset`, which is what to run if you think somebody saw it:
 
-- **a web browser**, at `https://<this machine>:8456` — nothing to install
+- **a web browser**, at `https://<this machine>:8456`, with nothing to install
 - **SSH**, on port 2223
 - **Remote Desktop**, on port 13489
 

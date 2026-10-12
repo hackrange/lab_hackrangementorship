@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 # How a student gets into their Local Lab, and the one password that does it.
 #
-#   hackrange-access rotate   make a new password (every new lab session)
+#   hackrange-access rotate   make a new password, ending every open session
+#   hackrange-access ensure   make sure there is a password and the web
+#                             desktop knows it, changing neither if there is
 #   hackrange-access cert     refresh the web address's certificate for this
 #                             machine's current network addresses
 #   hackrange-access info     print the web address, SSH command and password
 #
 # One username (student) and one password open all three ways in: the web
-# desktop in a browser, SSH, and Remote Desktop.  The password is replaced
-# every time a lab session is started fresh and on every install, so a
-# password a student pasted somewhere, or a lab they exposed by accident, stops
-# working the next time they start a session.  It is stored readable by root
-# only; the guacamole service reads its own copy.
+# desktop in a browser, SSH, and Remote Desktop.  The password is made at
+# install time and replaced by "hackrange-lab reset", which is what a student
+# runs if they think somebody saw it.  It is stored readable by root only; the
+# guacamole service reads its own copy.
 #
 # Runs as root (hackrange-lab calls it through sudo).
 #
@@ -29,6 +30,12 @@ SSH_PORT=2223
 RDP_PORT=13489
 LAB_CONTAINER=hackrange-mentorship-lab
 GUAC_CONTAINER=hackrange-mentorship-guacamole
+# The two connection names the web desktop offers.  Fixed, and never built
+# from a lab's title: Guacamole makes the address of a session out of the
+# connection's name, so a name that moved with the lab gave every lab a
+# different address and broke a link the moment a different lab started.
+GUAC_RDP_NAME="Hackrange Mentorship Lab (desktop)"
+GUAC_SSH_NAME="Hackrange Mentorship Lab (terminal)"
 GUAC_UPSTREAM=18091                    # what the guacamole container listens on, loopback only
 CATALOG="$HR_ROOT/config/labs.conf"
 STATE="$HR_ETC/current-lab"
@@ -100,13 +107,22 @@ password() {
 
 xml_escape() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'; }
 
-rotate() {
-    local pw; pw="$(new_password)"
-    install -d -m 700 "$HR_ETC"
-    ( umask 077; printf '# The lab login password.  Replaced at every new session.\nLAB_ACCESS_PASSWORD=%s\n' "$pw" > "$ACCESS.tmp" )
-    mv "$ACCESS.tmp" "$ACCESS"
-
-    # The web desktop's login, and the connection it opens.
+# The web desktop's two connections, written from the current password.
+#
+# BOTH protocols, always, with fixed names and nothing in them that depends on
+# which lab is running.  That is the point.  They used to be one connection
+# whose protocol was rewritten on every lab start, and a browser that was
+# already signed in kept the connection it was given when it signed in: after
+# switching from a terminal lab to a desktop one it went on asking for SSH,
+# guacd logged "SSH handshake failed" against a lab with no sshd, and the
+# student got a blank screen with no reason for it.  Signing in again fixed it,
+# which is what made it look intermittent rather than broken.
+#
+# Two fixed connections cannot go stale, because they never change.  Whichever
+# lab is running answers on the port its own protocol uses, and the control
+# panel links to the one that matches it.
+write_mapping() {
+    local pw="$1"
     # A dedicated system group, not the image's own group id: on the host that
     # number is usually a real person's group (the second account made).
     getent group "$GUAC_GROUP" >/dev/null || groupadd --system "$GUAC_GROUP"
@@ -114,22 +130,22 @@ rotate() {
     chown root:"$GUAC_GROUP" "$GUAC_DIR"
     local x; x="$(xml_escape "$pw")"
     ( umask 027
-      local proto name
-      proto="$(lab_protocol)"
-      # A FIXED name, deliberately, not the lab's title.  Guacamole builds the
-      # address of a session from the connection's name, so a name that changed
-      # with the lab gave every lab a different address: a student who
-      # bookmarked the lab, or followed a link from the lesson, found it had
-      # stopped existing the moment they started a different one.  Which lab is
-      # running is shown by the panel and by "hackrange-lab status" instead.
-      name="Hackrange Mentorship Lab"
-      if [ "$proto" = ssh ]; then
-          # A terminal lab.  Guacamole opens it over SSH, so the student gets a
-          # real terminal in the browser rather than an empty desktop.
-          cat > "$GUAC_DIR/user-mapping.xml.tmp" <<EOF
+      cat > "$GUAC_DIR/user-mapping.xml.tmp" <<EOF
 <user-mapping>
   <authorize username="student" password="$x">
-    <connection name="$name">
+    <connection name="$GUAC_RDP_NAME">
+      <protocol>rdp</protocol>
+      <param name="hostname">$LAB_CONTAINER</param>
+      <param name="port">3389</param>
+      <param name="username">student</param>
+      <param name="password">$x</param>
+      <param name="security">any</param>
+      <param name="ignore-cert">true</param>
+      <param name="resize-method">display-update</param>
+      <param name="enable-font-smoothing">true</param>
+      <param name="disable-audio">true</param>
+    </connection>
+    <connection name="$GUAC_SSH_NAME">
       <protocol>ssh</protocol>
       <param name="hostname">$LAB_CONTAINER</param>
       <param name="port">22</param>
@@ -142,58 +158,53 @@ rotate() {
   </authorize>
 </user-mapping>
 EOF
-      else
-          cat > "$GUAC_DIR/user-mapping.xml.tmp" <<EOF
-<user-mapping>
-  <authorize username="student" password="$x">
-    <connection name="$name">
-      <protocol>rdp</protocol>
-      <param name="hostname">$LAB_CONTAINER</param>
-      <param name="port">3389</param>
-      <param name="username">student</param>
-      <param name="password">$x</param>
-      <param name="security">any</param>
-      <param name="ignore-cert">true</param>
-      <param name="resize-method">display-update</param>
-      <param name="enable-font-smoothing">true</param>
-      <param name="disable-audio">true</param>
-    </connection>
-  </authorize>
-</user-mapping>
-EOF
-      fi
     )
     chown root:"$GUAC_GROUP" "$GUAC_DIR/user-mapping.xml.tmp"
     chmod 640 "$GUAC_DIR/user-mapping.xml.tmp"
     mv "$GUAC_DIR/user-mapping.xml.tmp" "$GUAC_DIR/user-mapping.xml"
-
-    # Then end every web desktop session, by restarting the service that holds
-    # them.
-    #
-    # Rewriting the file above is not enough, and believing it was cost an
-    # afternoon.  A browser that is already signed in keeps the connection it
-    # was given when it signed in, so after switching from a terminal lab to a
-    # desktop one it went on asking for SSH: guacd logged "SSH handshake
-    # failed" against a desktop lab that has no sshd, and the student was shown
-    # a blank screen with no reason for it.  A fresh sign in got the right
-    # connection, which is what made it look intermittent.
-    #
-    # There is nothing to preserve by being gentler.  The password has just
-    # changed, so every session that existed a moment ago was signed in with a
-    # password that is no longer the lab's, and the lab those sessions were
-    # looking at has been deleted.
-    if [ -n "$(docker ps -q -f "name=^${GUAC_CONTAINER}$" 2>/dev/null)" ]; then
-        docker restart "$GUAC_CONTAINER" >/dev/null 2>&1 || true
-        # Wait for it to answer again, so "hackrange-lab start" does not finish
-        # by telling a student to open an address that is not up yet.
-        local i
-        for i in $(seq 1 60); do
-            curl -fsS -o /dev/null "http://127.0.0.1:$GUAC_UPSTREAM/guacamole/" 2>/dev/null && break
-            sleep 1
-        done
-    fi
 }
 
+# End every web desktop session, by restarting the service that holds them.
+# Only called when the password has changed, because at that moment every
+# session that exists was signed in with a password that is no longer the
+# lab's, and the connection it holds carries that old password too.
+drop_sessions() {
+    [ -n "$(docker ps -q -f "name=^${GUAC_CONTAINER}$" 2>/dev/null)" ] || return 0
+    docker restart "$GUAC_CONTAINER" >/dev/null 2>&1 || true
+    local i
+    for i in $(seq 1 60); do
+        curl -fsS -o /dev/null "http://127.0.0.1:$GUAC_UPSTREAM/guacamole/" 2>/dev/null && break
+        sleep 1
+    done
+}
+
+# A new password.  Every session that used the old one stops working, which is
+# the whole point: it is what a student runs when they think somebody saw it.
+rotate() {
+    local pw; pw="$(new_password)"
+    install -d -m 700 "$HR_ETC"
+    ( umask 077; printf '# The lab login password.  Replaced by hackrange-lab reset.\nLAB_ACCESS_PASSWORD=%s\n' "$pw" > "$ACCESS.tmp" )
+    mv "$ACCESS.tmp" "$ACCESS"
+    write_mapping "$pw"
+    drop_sessions
+}
+
+# What starting a lab needs: a password and a mapping, without disturbing
+# either if they are already there.
+#
+# Starting a lab deliberately does NOT make a new password any more.  It used
+# to, and the cost was out of all proportion to the benefit: a student who
+# pressed Start in the control panel was signed out of the web desktop by
+# their own click, and had to go and find the new password before they could
+# open the lab they had just started.  On a Local Lab, which is one person on
+# their own machine, a password that lasts until they ask for a new one is the
+# better trade.  "hackrange-lab reset" still replaces it, and so does an
+# install.
+ensure() {
+    local pw; pw="$(password)"
+    if [ -z "$pw" ]; then rotate; return; fi
+    [ -s "$GUAC_DIR/user-mapping.xml" ] || { write_mapping "$pw"; drop_sessions; }
+}
 # ---------------------------------------------------------------- certificate
 
 # The web desktop's certificate names every address this machine has, so it
@@ -337,8 +348,7 @@ info() {
     printf '    - Some lessons use addresses that only work INSIDE the lab, such\n'
     printf '      as http://portal.lab:5000 in the Week 11 challenge.  Open those\n'
     printf '      from the lab'"'"'s own desktop or terminal, not from your computer.\n'
-    printf '    - This password changes every time you start a new lab session, and\n'
-    printf '      after every install.  To see the current one again, run:\n'
+    printf '    - This password lasts until you ask for a new one.  To see it again:\n'
     printf '          /opt/hackrange-mentorship/show_information.sh\n'
     printf '    - Keep the password to yourself.  Do not post it in a chat, a forum\n'
     printf '      or a screenshot.  If you think someone saw it, run\n'
@@ -358,7 +368,8 @@ info() {
 
 case "${1:-info}" in
     rotate) rotate ;;
+    ensure) ensure ;;
     cert)   cert ;;
     info)   info ;;
-    *) echo "usage: hackrange-access rotate|cert|info" >&2; exit 2 ;;
+    *) echo "usage: hackrange-access rotate|ensure|cert|info" >&2; exit 2 ;;
 esac

@@ -63,19 +63,20 @@ def _port_open(port: int) -> bool:
         return False
 
 
-def _mapping_protocol() -> str:
-    """Which protocol the web desktop is currently set up to speak.
+def _mapping_has(proto: str) -> bool:
+    """Does the web desktop offer a connection for this protocol?
 
-    hackrange-access writes this file each time a lab starts, and Guacamole
-    reads it.  Until it names the running lab's protocol, the web desktop is
-    still offering the lab before this one.
+    Both are written at once and never change, so this is really a check that
+    the file is there and whole, rather than a race worth watching.  It is
+    still worth asking: an empty or half written file is the difference
+    between a lab that opens and a login that is refused.
     """
     try:
         with open(GUAC_MAPPING) as fh:
-            m = re.search(r"<protocol>\s*([a-z]+)\s*</protocol>", fh.read())
+            text = fh.read()
     except OSError:
-        return ""
-    return m.group(1) if m else ""
+        return False
+    return bool(re.search(r"<protocol>\s*" + re.escape(proto) + r"\s*</protocol>", text))
 
 
 def ready(lab: dict) -> bool:
@@ -91,16 +92,14 @@ def ready(lab: dict) -> bool:
       - the web desktop is running AND answering.  It is restarted on every
         lab start, deliberately, to end sessions that still hold the previous
         lab's connection, so for a few seconds it is up and not yet serving.
-      - the web desktop's connection names THIS lab's protocol.  It is
-        rewritten on every start, and until it has been, the browser would
-        offer a terminal for a desktop lab or the other way round, and would
-        not connect at all.
+      - the web desktop offers a connection for this lab's protocol at all,
+        which is really a check that its login file is there and whole.
     """
     inner = SSH_INNER if lab.get("proto") == "ssh" else RDP_INNER
     return (_port_open(inner)
             and _container_running(GUAC_CONTAINER)
             and _port_open(GUAC_UPSTREAM)
-            and _mapping_protocol() == lab.get("proto"))
+            and _mapping_has(lab.get("proto") or "rdp"))
 
 
 def states() -> dict[str, str]:

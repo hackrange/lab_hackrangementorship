@@ -189,9 +189,14 @@ class Handler(BaseHTTPRequestHandler):
         snap = metrics.snapshot()
         states = labctl.states()
         errs = labctl.errors()
-        info = labinfo.info()
         logins = catalog.logins()
         running = labinfo.current_lab()
+        # The Open link is built for the protocol of the lab that is running,
+        # because there is one connection per protocol and opening a terminal
+        # lab through the desktop one shows a black window that never connects.
+        by_key = catalog.by_key()
+        running_proto = (by_key.get(running) or {}).get("proto", "rdp")
+        info = labinfo.info(running_proto)
         items = []
         for lab in catalog.labs():
             key = lab["key"]

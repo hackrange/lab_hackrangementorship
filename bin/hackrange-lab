@@ -3,7 +3,7 @@
 #
 #   hackrange-lab list            the labs, and the course weeks each one is for
 #   hackrange-lab info            how to get in: web address, username, password
-#   hackrange-lab start <lab>     start a lab (a fresh machine, a new password)
+#   hackrange-lab start <lab>     start a lab (a fresh machine)
 #   hackrange-lab desktop [lab]   open the lab's desktop on this machine
 #   hackrange-lab shell [lab]     a terminal inside the lab (no password needed)
 #   hackrange-lab ssh [lab]       connect with SSH (shows the password first)
@@ -125,7 +125,7 @@ start() {
     fi
     d rm -f "$NAME" "$COMPANION" >/dev/null 2>&1
 
-    printf 'Starting the %s lab with a new password...\n' "$key"
+    printf 'Starting the %s lab...\n' "$key"
     # Record which lab this is BEFORE rotating the password.  The web desktop's
     # connection is built from this file: it decides whether the browser opens a
     # desktop or a terminal, and four of the seven labs are terminals.  Rotating
@@ -142,7 +142,12 @@ start() {
     asroot bash -c 'umask 077; printf "%s\n" "$2" > "$1" && chmod 600 "$1"' \
         hackrange-lab "$STATE" "$key" \
         || fail "Could not record which lab is running ($STATE)."
-    asroot "$ACCESS" rotate || fail "Could not make a new lab password."
+    # "ensure", not "rotate": starting a lab does not make a new password.  It
+    # used to, and a student who pressed Start in the control panel was signed
+    # out of the web desktop by their own click, then had to go and find the
+    # new password before they could open the lab they had just started.
+    # "hackrange-lab reset" still replaces the password.
+    asroot "$ACCESS" ensure || fail "Could not set up the lab password."
     asroot "$ACCESS" cert || true
 
     # The same SSH host keys in every lab, so ssh never greets the student with
@@ -396,7 +401,12 @@ case "${1:-help}" in
     env)     env_for "" "${2:-}" ;;
     check)   exec /usr/local/bin/hackrange-check "${2:-}" ;;
     stop)    stop "${2:-}" ;;
-    reset)   k="$(which_lab "${2:-}")"; stop -y >/dev/null; start "$k" ;;
+    # reset is the one that replaces the password, because it is what a student
+    # runs when they think somebody saw it.  Ending every open session is the
+    # point of it, so it rotates before starting the lab again.
+    reset)   k="$(which_lab "${2:-}")"; stop -y >/dev/null
+             asroot "$ACCESS" rotate || fail "Could not make a new lab password."
+             start "$k" ;;
     status)  status ;;
     update)  exec sudo bash "$HR_ROOT/install.sh" ;;
     diag)    exec sudo /usr/local/sbin/hackrange-diag ;;

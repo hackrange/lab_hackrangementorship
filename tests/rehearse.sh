@@ -126,6 +126,39 @@ start_lab() {
     return 0
 }
 
+# A desktop lab has to be able to complete an RDP handshake, which happens
+# before any password is asked for and so before anything else can go wrong.
+#
+# This is checked because it broke: xrdp reads its TLS key as the xrdp user,
+# Debian grants that through the ssl-cert group, and one image was built
+# without that membership.  xrdp started, listened, reported itself healthy,
+# and then refused every connection with "Permission denied" on its own key.
+# Everything an automated check looked at was fine; guacd said only "Upstream
+# error"; the student saw a lab that would not open.  So the check is that the
+# xrdp user can really read the key, not that xrdp is running.
+rdp_checks() {
+    local key="$1" proto="$2"
+    [ "$proto" = rdp ] || return 0
+    local keyfile
+    keyfile="$(docker exec "$NAME" sh -c 'readlink -f /etc/xrdp/key.pem 2>/dev/null' 2>/dev/null | tr -d '\r')"
+    if [ -z "$keyfile" ]; then
+        bad "$key: xrdp has no TLS key" "the RDP handshake cannot complete without one"
+        return
+    fi
+    if docker exec "$NAME" su -s /bin/sh xrdp -c "head -c 1 '$keyfile' >/dev/null" >/dev/null 2>&1; then
+        ok "$key: xrdp can read its TLS key, so RDP can start"
+    else
+        bad "$key: xrdp cannot read its TLS key ($keyfile)" \
+            "every connection is refused before a password is asked for; add xrdp to the ssl-cert group"
+    fi
+    # And no complaint in its own log, which is the only place the real reason
+    # ever appears.
+    if docker exec "$NAME" sh -c 'grep -qiE "cannot read private key|key file" /var/log/xrdp.log 2>/dev/null' >/dev/null 2>&1; then
+        bad "$key: xrdp logged a problem with its key" \
+            "$(docker exec "$NAME" sh -c 'grep -iE "cannot read private key|key file" /var/log/xrdp.log | tail -1' 2>/dev/null)"
+    fi
+}
+
 # A lab has to survive the machine it runs on being rebooted.  Docker restarts
 # the SAME container then, writable layer and all, so anything a service wrote
 # into /run before the machine went down is still there when it starts again.
@@ -455,6 +488,7 @@ run_lab() {
     NAME=""; COMP=""; PNET=""
     if start_lab "$key"; then
         common_checks "$key"
+        rdp_checks "$key" "$(field "$(row "$key")" 3)"
         egress_checks "$key"
         web_checks "$key"
         case "$key" in
