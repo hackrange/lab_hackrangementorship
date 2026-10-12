@@ -14,7 +14,7 @@ Author: Tim Rice - tim.j.rice@hackrange.com
 
 from __future__ import annotations
 
-from .const import CATALOG
+from .const import CATALOG, LOGINS
 
 # What each lab is, in a sentence, for the card.  The catalog's title says
 # which weeks' material it holds; this says what the student does in it, which
@@ -79,3 +79,28 @@ def labs() -> list[dict]:
 
 def by_key() -> dict:
     return {lab["key"]: lab for lab in labs()}
+
+
+def logins() -> dict:
+    """{lab key: [{"group", "label", "value", "secret", "note"}]}.
+
+    The same file "hackrange-lab env" reads, so the card in the panel and the
+    terminal cannot tell a student two different passwords.
+    """
+    out: dict = {}
+    try:
+        with open(LOGINS) as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                f = line.split("|")
+                if len(f) < 6:
+                    continue
+                out.setdefault(f[0], []).append({
+                    "group": f[1], "label": f[2], "value": f[3],
+                    "secret": f[4] == "1", "note": "" if f[5] == "-" else f[5],
+                })
+    except OSError:
+        return {}
+    return out

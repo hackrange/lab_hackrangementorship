@@ -190,6 +190,7 @@ class Handler(BaseHTTPRequestHandler):
         states = labctl.states()
         errs = labctl.errors()
         info = labinfo.info()
+        logins = catalog.logins()
         running = labinfo.current_lab()
         items = []
         for lab in catalog.labs():
@@ -211,6 +212,10 @@ class Handler(BaseHTTPRequestHandler):
                 "web": [{"port": w["port"], "label": w["label"],
                          "url": f"http://{info['host']}:{w['port']}/"}
                         for w in lab["web"]] if state == "running" else [],
+                # The lab's own logins, which do not depend on it running: a
+                # student deciding whether to start the Splunk lab may well
+                # want to see what they will be signing in to it with.
+                "logins": logins.get(key, []),
                 "error": errs.get(key, ""),
             })
         return {

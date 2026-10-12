@@ -69,6 +69,32 @@ lab's desktop is still there for the lessons that use a terminal.
 
 ## Using it
 
+There are two ways to use the lab, and they do the same things.  Use whichever
+you prefer; nothing is only available in one of them.
+
+### The control panel, in a web browser
+
+```
+https://<the address of the Ubuntu machine>:8456/control/
+```
+
+That is also what the plain address answers, so `https://<the machine>:8456`
+is enough.  Sign in as `student` with the lab password, which
+`show_information.sh` prints on the Ubuntu machine.
+
+The panel has a card for each of the seven labs.  A card starts its lab, opens
+it in the browser, marks your work in it, and ends it.  Above the cards are the
+machine's processor, memory, disk and network, and your login with the password
+hidden until you ask for it.
+
+One lab runs at a time, because there is one web desktop for it to answer on.
+Starting a lab therefore ends the one before it and deletes everything in it,
+and the panel says so before it does it.  Starting a lab also gives it a new
+password; the panel shows the new one as soon as the lab is up, and you stay
+signed in.
+
+### The terminal
+
 ```
 hackrange-lab list              the labs, and the course weeks each one is for
 hackrange-lab start netlab      start the lab your lesson names

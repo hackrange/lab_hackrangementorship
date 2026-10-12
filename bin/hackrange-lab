@@ -31,6 +31,7 @@ set -uo pipefail
 HR_ROOT=/opt/hackrange-mentorship
 HR_ETC=/etc/hackrange-mentorship
 CATALOG="$HR_ROOT/config/labs.conf"
+LOGINS="$HR_ROOT/config/lab-logins.conf"
 ACCESS=/usr/local/sbin/hackrange-access
 STATE="$HR_ETC/current-lab"
 NET=hackrange-mentorship-access
@@ -257,26 +258,37 @@ env_for() {
     printf '\n'; bold "Signing in to the $key lab"
     printf '  user:      student\n'
     printf '  password:  %s\n' "$(password)"
-    case "$key" in
-        splunk)
-            printf '\n'; bold "Splunk, inside the lab"
-            # Name the address on the student's own network FIRST.  The desktop
-            # icon still works, but on an ARM machine this lab runs emulated
-            # and its own Firefox is painfully slow, so the browser the student
-            # already has open is both the faster route and the one they will
-            # keep using.
-            printf '  address:   %-26s (from your own computer)\n' "http://$(address):8000"
-            printf '             %-26s (inside the lab, or the desktop icon)\n' "http://localhost:8000"
-            printf '  user:      admin\n'
-            printf '  password:  Changeme123\n' ;;
-        webapp-gui)
-            printf '\n'; bold "The target and the scanner"
-            printf '  portal:    http://portal.lab:5000      (its source is in ~/app)\n'
-            printf '  scanner:   http://dast:8888            (the DAST icon on the desktop)\n'
-            printf '  user:      admin\n'
-            printf '  password:  student\n'
-            printf '  scan this: http://target:5000          (the portal, as the scanner sees it)\n' ;;
-    esac
+    # The lab's own logins come from config/lab-logins.conf, which the control
+    # panel reads as well.  One copy, so a value cannot be right in a terminal
+    # and wrong in the browser.
+    local lkey lgroup llabel lvalue lsecret lnote lastgroup=""
+    while IFS='|' read -r lkey lgroup llabel lvalue lsecret lnote; do
+        [ "$lkey" = "$key" ] || continue
+        if [ "$lgroup" != "$lastgroup" ]; then
+            printf '\n'; bold "$lgroup"; lastgroup="$lgroup"
+        fi
+        if [ "$lnote" = "-" ]; then
+            printf '  %-10s %s\n' "$llabel:" "$lvalue"
+        else
+            printf '  %-10s %-26s (%s)\n' "$llabel:" "$lvalue" "$lnote"
+        fi
+    done <<< "$(grep -vE '^[[:space:]]*#|^[[:space:]]*$' "$LOGINS" 2>/dev/null)"
+
+    # The lab's web apps on this machine's own address, from the catalog, so a
+    # student is told the fast route as well as the one inside the lab.  On an
+    # ARM machine this matters: the Splunk lab runs emulated and its own
+    # browser is painfully slow, while this one is not.
+    local web; web="$(field "$r" 8)"
+    if [ -n "$web" ] && [ "$web" != "-" ]; then
+        local spec wp wl
+        printf '\n'; bold "From your own browser"
+        while IFS= read -r spec; do
+            [ -n "$spec" ] || continue
+            wp="${spec%%/*}"; wl="${spec#*/}"
+            [ "$wl" = "$spec" ] && wl="the lab's web app"
+            printf '  %-10s %s\n' "$wl:" "http://$(address):$wp/"
+        done <<< "$(printf '%s\n' "$web" | tr ',' '\n')"
+    fi
     printf '\n'
 }
 

@@ -11,6 +11,7 @@ HR_ETC = "/etc/hackrange-mentorship"
 
 CATALOG = HR_ROOT + "/config/labs.conf"
 ANSWERS = HR_ROOT + "/config/answers"
+LOGINS = HR_ROOT + "/config/lab-logins.conf"
 ACCESS_ENV = HR_ETC + "/access.env"
 STATE = HR_ETC + "/current-lab"
 
