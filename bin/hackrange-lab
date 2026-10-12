@@ -286,6 +286,19 @@ chk() {
 
 status() {
     bold "Hackrange Mentorship Local Lab"
+
+    # An install takes a while, and while it runs the services it has not
+    # reached yet honestly report themselves as down.  Say so once at the top,
+    # so the list below reads as "not yet" rather than "broken", and nobody
+    # follows the advice beside a [down] line and starts a second install.
+    local lk=/run/lock/hackrange-mentorship-install.lock
+    [ -e "$lk" ] || lk=/tmp/hackrange-mentorship-install.lock
+    if [ -e "$lk" ] && command -v flock >/dev/null 2>&1 \
+       && ! flock -n "$lk" true 2>/dev/null; then
+        printf '  \e[33m\e[1mAn install is running right now.\e[0m  Anything below marked\n'
+        printf '  [down] is most likely a step the install has not reached yet.  Watch\n'
+        printf '  it with:  sudo tail -f /var/log/hackrange-mentorship-install.log\n\n'
+    fi
     chk "Docker" "d info" "sudo systemctl restart docker"
     chk "web desktop (https://127.0.0.1:$WEB_PORT)" \
         "curl -fsS -o /dev/null https://127.0.0.1:$WEB_PORT/guacamole/" "sudo systemctl restart nginx"

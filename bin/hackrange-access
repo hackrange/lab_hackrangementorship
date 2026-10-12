@@ -109,7 +109,13 @@ rotate() {
     ( umask 027
       local proto name
       proto="$(lab_protocol)"
-      name="$(xml_escape "$(lab_title)")"
+      # A FIXED name, deliberately, not the lab's title.  Guacamole builds the
+      # address of a session from the connection's name, so a name that changed
+      # with the lab gave every lab a different address: a student who
+      # bookmarked the lab, or followed a link from the lesson, found it had
+      # stopped existing the moment they started a different one.  Which lab is
+      # running is shown by the panel and by "hackrange-lab status" instead.
+      name="Hackrange Mentorship Lab"
       if [ "$proto" = ssh ]; then
           # A terminal lab.  Guacamole opens it over SSH, so the student gets a
           # real terminal in the browser rather than an empty desktop.

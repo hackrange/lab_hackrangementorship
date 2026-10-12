@@ -17,6 +17,22 @@ export HR_ROOT
 
 [ "$(id -u)" -eq 0 ] || { echo "Run this with sudo." >&2; exit 1; }
 
+# One install at a time.  Several messages tell a student to run install.sh
+# when something is missing, and the natural moment to follow that advice is
+# while an install is still going.  Two runs then build the same images side by
+# side, race for the same image name, and one of them is killed partway,
+# leaving an image that exists but is incomplete.  So the second run waits its
+# turn instead, and says so.
+HR_LOCK=/run/lock/hackrange-mentorship-install.lock
+[ -d /run/lock ] || HR_LOCK=/tmp/hackrange-mentorship-install.lock
+exec 9>"$HR_LOCK"
+if command -v flock >/dev/null 2>&1 && ! flock -n 9; then
+    echo "An install is already running on this machine, so this one stopped." >&2
+    echo "Wait for it to finish.  You can watch it with:" >&2
+    echo "    sudo tail -f $HR_LOG" >&2
+    exit 1
+fi
+
 install -d -m 755 "$(dirname "$HR_LOG")"
 touch "$HR_LOG"; chmod 600 "$HR_LOG"
 log "==== setup started from $HR_ROOT ($(git -C "$HR_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown))"
