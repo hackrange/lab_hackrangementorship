@@ -30,6 +30,13 @@ ENV DEBIAN_FRONTEND=noninteractive
 # shared core but leaves out Writer, Impress, Draw and Base, which is most of
 # the weight.  --no-install-recommends keeps out the artwork, sample documents,
 # and language packs.
+#
+# curl and a browser, because a Local Lab runs on the student's own machine and
+# has their internet.  This was the one lab with no way to reach it: no curl, no
+# wget, no browser, so "it has internet" was true of the network and useless to
+# the person sitting there.  Weeks 5 to 7 hunt shadow SaaS and shadow AI, which
+# means looking up the vendor behind a domain, and the other two desktop labs
+# already have Firefox.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       xfce4-session xfwm4 xfdesktop4 xfce4-panel xfce4-terminal \
@@ -39,6 +46,7 @@ RUN apt-get update \
       fonts-dejavu fonts-liberation \
       sudo tini ca-certificates locales python3 \
       less nano procps iproute2 coreutils gawk sed grep \
+      curl firefox-esr \
  && sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
  && locale-gen \
  && apt-get clean && rm -rf /var/lib/apt/lists/* \

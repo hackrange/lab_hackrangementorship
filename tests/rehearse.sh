@@ -170,6 +170,39 @@ web_checks() {
     done <<< "$(printf '%s\n' "$w" | tr ',' '\n')"
 }
 
+# A Local Lab runs on the student's own machine and has their internet, which
+# the hosted labs deliberately do not.  That promise was never tested, and it
+# turned out to be half true: the network carried traffic, while one lab had no
+# curl, no wget and no browser, so there was no way for the person sitting there
+# to use it.  Both halves are checked now.
+#
+# The reach test is bash's own /dev/tcp rather than curl, because curl is not in
+# every image and the point is to test the lab's network, not its package list.
+# Resolving the name first proves DNS, which is the half that breaks quietly.
+egress_checks() {
+    local key="$1"
+    inlab 'getent hosts github.com >/dev/null' >/dev/null 2>&1 &&
+        ok "$key: DNS resolves on the internet" ||
+        bad "$key: cannot resolve github.com" "a Local Lab is meant to have the student's internet"
+    inlab 'exec 3<>/dev/tcp/github.com/443' >/dev/null 2>&1 &&
+        ok "$key: reaches the internet" ||
+        bad "$key: cannot reach github.com:443" "a Local Lab is meant to have the student's internet"
+    # And something to use it WITH.  A terminal lab needs a fetcher; a desktop
+    # lab needs a browser, because that is what a person at a desktop reaches
+    # for.
+    local proto; proto="$(field "$(row "$key")" 3)"
+    if inlab 'command -v curl || command -v wget' >/dev/null 2>&1; then
+        ok "$key: has a way to fetch something (curl or wget)"
+    else
+        bad "$key: has no curl and no wget" "nothing in the lab can use the internet"
+    fi
+    if [ "$proto" = rdp ]; then
+        inlab 'command -v firefox || command -v firefox-esr' >/dev/null 2>&1 &&
+            ok "$key: the desktop has a browser" ||
+            bad "$key: the desktop has no browser" "a student at a desktop expects one"
+    fi
+}
+
 # Every lab: the things true of all of them.
 common_checks() {
     local key="$1"
@@ -422,6 +455,7 @@ run_lab() {
     NAME=""; COMP=""; PNET=""
     if start_lab "$key"; then
         common_checks "$key"
+        egress_checks "$key"
         web_checks "$key"
         case "$key" in
             kali)       lab_kali ;;
