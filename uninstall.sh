@@ -47,18 +47,11 @@ say "removing nginx's lab sites"
 rm -rf /etc/nginx/hackrange-brand
 rm -f /etc/apt/apt.conf.d/90hackrange-wait-for-lock
 rm -f /etc/nginx/conf.d/hackrange-lab.conf /etc/nginx/conf.d/hackrange-mentorship-access.conf /etc/nginx/conf.d/hackrange-hostcheck.conf \
-      /etc/nginx/conf.d/hackrange-host-access.conf /etc/nginx/conf.d/hackrange-week4.conf \
+      /etc/nginx/conf.d/hackrange-host-access.conf \
       /etc/nginx/hackrange-private-only.conf /etc/nginx/modules-enabled/99-hackrange-stream.conf
 systemctl disable hackrange-mentorship-access >/dev/null 2>&1
 rm -f /etc/systemd/system/hackrange-mentorship-access.service /usr/local/sbin/hackrange-mentorship-access
 rm -rf /etc/nginx/stream.d /etc/nginx/mentorship-tls /etc/systemd/system/nginx.service.d/hackrange.conf
-systemctl reload nginx >/dev/null 2>&1 || true
-
-say "removing the control panel"
-systemctl disable --now hackrange-control hackrange-autostart >/dev/null 2>&1
-rm -f /etc/systemd/system/hackrange-control.service /etc/systemd/system/hackrange-autostart.service \
-      /etc/nginx/conf.d/hackrange-control.conf /etc/nginx/hackrange-lab-subnet.conf
-rm -rf /usr/local/lib/hackrange/control
 systemctl reload nginx >/dev/null 2>&1 || true
 
 say "removing the lab network address and names"

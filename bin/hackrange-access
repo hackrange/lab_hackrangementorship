@@ -47,7 +47,7 @@ lab_title()    { local r; r="$(lab_row "$(current_lab)")"; [ -n "$r" ] && echo "
 
 # This machine's address on its network: the one a student's own computer
 # reaches it on.  Empty when the machine has no network.
-primary_ip() { ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -1; }
+primary_ip() { ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -1 || true; }
 
 # Every IPv4 address the machine has, except loopback and the lab's own.
 # Docker's and Kubernetes' own bridges are left out: nothing outside this
@@ -82,7 +82,13 @@ new_password() {
     printf '%s' "$pw"
 }
 
-password() { sed -n 's/^LAB_ACCESS_PASSWORD=//p' "$ACCESS" 2>/dev/null; }
+# Nothing, and success, before the first lab session: the file does not exist
+# yet.  The guard matters because sed's "can't read" status is 2, and under
+# set -e that killed the caller before it could say "no lab started yet".
+password() {
+    [ -r "$ACCESS" ] || return 0
+    sed -n 's/^LAB_ACCESS_PASSWORD=//p' "$ACCESS" 2>/dev/null
+}
 
 xml_escape() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'; }
 
@@ -194,7 +200,7 @@ cert() {
 # ---------------------------------------------------------------- information
 
 info() {
-    local ip pw
+    local ip pw fp
     ip="$(primary_ip)"
     pw="$(password)"
     local b=$'\e[1m' g=$'\e[32m' y=$'\e[33m' o=$'\e[0m'
@@ -214,12 +220,6 @@ info() {
         printf '      From your own computer:   https://%s:%s\n' "$ip" "$WEB_PORT"
     fi
     printf '      From this Ubuntu machine: https://127.0.0.1:%s\n\n' "$WEB_PORT"
-
-    printf '%s  Lab control panel%s  (start and stop services, see how hard the lab works)\n' "$b" "$o"
-    if [ -n "$ip" ] && is_private "$ip"; then
-        printf '      From your own computer:   https://%s:%s/control/\n' "$ip" "$WEB_PORT"
-    fi
-    printf '      Inside the lab desktop:   it is the start page of Firefox\n\n'
 
     printf '%s  Sign in with%s\n' "$b" "$o"
     printf '      username:  student\n'
@@ -251,8 +251,17 @@ info() {
     printf '      "Advanced" and then "Continue" (or "Accept the risk").  Never do\n'
     printf '      that for a bank, email or shopping site.  The README shows how to\n'
     printf '      make the warning go away for good.\n'
-    printf '    - The lab certificate'"'"'s fingerprint (check it before you trust it):\n'
-    printf '      %s\n' "$(openssl x509 -noout -fingerprint -sha256 -in "$LABTLS/lab-ca.crt" 2>/dev/null | cut -d= -f2)"
+    # Only if it can actually be read.  Telling a beginner to check a
+    # fingerprint and then showing them a blank line teaches them to skip the
+    # check, which is worse than not mentioning it.
+    # The "|| true" is not decoration: under set -euo pipefail a missing CA
+    # makes this assignment fatal, which is the very failure this block is
+    # here to avoid.
+    fp="$(openssl x509 -noout -fingerprint -sha256 -in "$LABTLS/lab-ca.crt" 2>/dev/null | cut -d= -f2 || true)"
+    if [ -n "$fp" ]; then
+        printf '    - The lab certificate'"'"'s fingerprint (check it before you trust it):\n'
+        printf '      %s\n' "$fp"
+    fi
     printf '    - Some lessons use addresses that only work INSIDE the lab, such\n'
     printf '      as http://portal.lab:5000 in the Week 11 challenge.  Open those\n'
     printf '      from the lab'"'"'s own desktop or terminal, not from your computer.\n'

@@ -26,8 +26,8 @@ None of these are findings. Please do not report them.
 
 ## Reporting a real problem
 
-If you find a real vulnerability in the installer, the lab services or the
-control panel, please report it privately: use **Security > Report a
+If you find a real vulnerability in the installer, the lab images or the
+lab services, please report it privately: use **Security > Report a
 vulnerability** on this repository's GitHub page.  Please do not open a public
 issue for a security problem.
 
