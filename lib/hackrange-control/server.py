@@ -117,6 +117,19 @@ class Handler(BaseHTTPRequestHandler):
             return self._static("index.html")
         if path.startswith("/static/"):
             return self._static(path[len("/static/"):])
+        if path == "/open":
+            # Open the running lab, signing the student into the web desktop on
+            # the way through so they are not asked for a password they have
+            # already given this panel.  Minted per click and never held in the
+            # page's state, so a session is not left lying in a polled reply.
+            if not self._authorized():
+                return self._json(401, {"error": "sign in"})
+            running = labinfo.current_lab()
+            lab = catalog.by_key().get(running)
+            if not lab:
+                return self._json(409, {"error": "no lab is running"})
+            where = labinfo.desktop_path(lab.get("proto") or "rdp", labinfo.guac_token())
+            return self._send(302, b"", "text/plain", {"Location": where})
         if path == "/api/whoami":
             return self._json(200, {"door": self._door(), "authenticated": self._authorized()})
         if path == "/api/state":

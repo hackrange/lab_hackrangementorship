@@ -126,6 +126,50 @@ start_lab() {
     return 0
 }
 
+# Both doors, on every lab, proved by opening them.
+#
+# The published doors are the same whatever the lab: SSH on 2223 and Remote
+# Desktop on 13489, each forwarded into the container.  Two of the desktop
+# images carried no sshd at all, so nginx accepted the student's connection,
+# found nothing behind it and closed it again: "Connection closed by <host>
+# port 2223", on labs whose own instructions tell them SSH is one of the three
+# ways in.
+#
+# Nothing here caught that, because the only door check asked whether the one
+# process a lab's protocol names was running.  So this asks BOTH doors, and
+# asks them the way a client does: open the port and read what comes back.  It
+# also insists the listener is on every address, because a service bound to
+# loopback inside the container is a service nginx cannot reach.
+door_checks() {
+    local key="$1" proto="$2" banner="" i
+    for i in $(seq 1 15); do
+        banner="$(asroot 'timeout 5 sh -c "exec 3<>/dev/tcp/127.0.0.1/22; head -c 20 <&3"' | tr -d '\r')"
+        case "$banner" in SSH-*) break ;; esac
+        sleep 2
+    done
+    case "$banner" in
+        SSH-*) ok "$key: the SSH door answers ($banner)" ;;
+        *)     bad "$key: nothing answers on the SSH door" \
+                   "a student is told SSH works on every lab and gets 'Connection closed by <host> port 2223'" ;;
+    esac
+
+    if asroot 'command -v ss' >/dev/null 2>&1; then
+        shows 'ss -lnt' '(0\.0\.0\.0|\*):22 ' &&
+            ok "$key: SSH listens on every address" ||
+            bad "$key: SSH is not listening on every address" "nginx cannot reach a loopback-only listener"
+    else
+        skip "$key: SSH listens on every address (no ss in this image)"
+    fi
+
+    # The desktop door, for the labs that have one.  A TCP accept is all that
+    # is asked here; rdp_checks goes on to prove the handshake itself.
+    if [ "$proto" = rdp ]; then
+        asroot 'timeout 5 sh -c "exec 3<>/dev/tcp/127.0.0.1/3389"' >/dev/null 2>&1 &&
+            ok "$key: the Remote Desktop door accepts" ||
+            bad "$key: nothing accepts on the Remote Desktop door"
+    fi
+}
+
 # A desktop lab has to be able to complete an RDP handshake, which happens
 # before any password is asked for and so before anything else can go wrong.
 #
@@ -500,6 +544,7 @@ run_lab() {
     NAME=""; COMP=""; PNET=""
     if start_lab "$key"; then
         common_checks "$key"
+        door_checks "$key" "$(field "$(row "$key")" 3)"
         rdp_checks "$key" "$(field "$(row "$key")" 3)"
         egress_checks "$key"
         web_checks "$key"

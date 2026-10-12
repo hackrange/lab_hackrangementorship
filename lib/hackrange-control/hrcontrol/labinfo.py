@@ -10,10 +10,14 @@ from __future__ import annotations
 
 import base64
 import ipaddress
+import json
 import subprocess
+import urllib.error
+import urllib.parse
+import urllib.request
 
-from .const import (ACCESS_ENV, GUAC_RDP_NAME, GUAC_SSH_NAME, RDP_PORT,
-                    SSH_PORT, STATE, WEB_PORT)
+from .const import (ACCESS_ENV, GUAC_RDP_NAME, GUAC_SSH_NAME, GUAC_UPSTREAM,
+                    RDP_PORT, SSH_PORT, STATE, WEB_PORT)
 
 
 def _read_env(path: str) -> dict:
@@ -66,6 +70,53 @@ def desktop_url(host: str, proto: str = "rdp") -> str:
     token = (name + "\0c\0default").encode()
     ident = base64.b64encode(token).decode().rstrip("=")
     return f"https://{host}:{WEB_PORT}/guacamole/#/client/{ident}"
+
+
+def guac_token() -> str:
+    """A web desktop session for the student who is already signed in here.
+
+    They have proved who they are to this panel with the lab password, and the
+    web desktop wants the same password again.  Asking twice for one password
+    is not security, it is an obstacle, so the panel spends the password on
+    their behalf and hands the browser the session it gets back.
+
+    The web desktop takes the query string of the address it is opened at and
+    offers it as credentials, so a session passed as "?token=" is adopted
+    without a form.  Verified both ways round before it was relied on: the
+    token endpoint accepts a bare token as the only credential and answers 200,
+    and the page's own script posts the address's parameters to that endpoint.
+
+    Returns "" on any failure, and the caller then opens the sign in page: a
+    student who has to type their password is inconvenienced, where one sent to
+    a broken address is stuck.
+    """
+    pw = access_password()
+    if not pw:
+        return ""
+    body = urllib.parse.urlencode({"username": "student", "password": pw}).encode()
+    url = f"http://127.0.0.1:{GUAC_UPSTREAM}/guacamole/api/tokens"
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as fh:
+            token = json.loads(fh.read(8192)).get("authToken", "")
+    except (urllib.error.URLError, OSError, ValueError, TypeError):
+        return ""
+    # Only ever a hex session id.  Checked rather than trusted, because this
+    # goes into an address the browser is told to follow.
+    return token if token.isalnum() and len(token) <= 128 else ""
+
+
+def desktop_path(proto: str = "rdp", token: str = "") -> str:
+    """The web desktop address as a path, for a redirect from this panel.
+
+    A path rather than a full address, so it works whichever name or address
+    the student reached the panel at, including through a tunnel.
+    """
+    name = GUAC_SSH_NAME if proto == "ssh" else GUAC_RDP_NAME
+    ident = base64.b64encode((name + "\0c\0default").encode()).decode().rstrip("=")
+    tail = f"?token={urllib.parse.quote(token)}" if token else ""
+    return f"/guacamole/#/client/{ident}{tail}"
 
 
 def info(proto: str = "rdp") -> dict:

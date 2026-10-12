@@ -38,6 +38,19 @@ rm -f /tmp/.X*-lock /tmp/.X11-unix/X* 2>/dev/null || true
 mkdir -p /run/xrdp /tmp/.X11-unix
 chmod 1777 /tmp/.X11-unix 2>/dev/null || true
 
+
+# sshd, so this desktop lab answers a terminal too.
+#
+# The SSH door on 2223 is published for every lab, and the student is told SSH
+# is one of the three ways in.  This image ran no sshd, so nginx accepted the
+# connection, found nothing behind it and closed it: "Connection closed by
+# <host> port 2223", on a lab they had just been told to reach that way.  It is
+# started here rather than exec'd because xrdp is what this container is for,
+# and a failure to start a terminal must not take the desktop down with it.
+mkdir -p /run/sshd
+ssh-keygen -A >/dev/null 2>&1 || true
+/usr/sbin/sshd 2>/dev/null || true
+
 # xrdp-sesman must be up before xrdp accepts a session.
 /usr/sbin/xrdp-sesman
 exec /usr/sbin/xrdp --nodaemon

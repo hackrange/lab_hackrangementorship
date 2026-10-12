@@ -42,6 +42,7 @@ RUN apt-get update \
       xrdp xorgxrdp xorg firefox-esr \
       sudo tini ca-certificates locales curl python3 procps \
       less nano iproute2 coreutils gawk sed grep net-tools \
+      openssh-server \
  && sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
  && locale-gen \
  && apt-get clean && rm -rf /var/lib/apt/lists/* \
@@ -57,6 +58,16 @@ RUN apt-get update \
  && printf '#!/bin/sh\nxfce4-session\n' > /etc/xrdp/startwm.sh \
  && chmod +x /etc/xrdp/startwm.sh \
  && adduser xrdp ssl-cert 2>/dev/null || true \
+ # sshd, so this desktop lab answers a terminal as well.
+ #
+ # Every lab publishes the SSH door on 2223, and the student is told SSH is one
+ # of the three ways in.  This image had no sshd at all, so nginx accepted the
+ # connection, found nothing behind it and closed it again: "Connection closed
+ # by <host> port 2223", on a lab the student had just been told to reach that
+ # way.  It also gives them scp, which is how work leaves a disposable lab.
+ && sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config \
+ && sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config \
+ && mkdir -p /run/sshd \
  && mkdir -p /run/dbus \
  && rm -f /etc/xdg/autostart/xfce4-power-manager.desktop \
           /etc/xdg/autostart/xfce4-screensaver.desktop
