@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HackRange Lab</title>
+<link rel="icon" type="image/png" href="static/favicon.png">
+<link rel="stylesheet" href="static/app.css">
+<script src="static/app.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <img class="brand" src="static/logo.png" alt="HackRange">
+    <div class="titles">
+      <h1>Your Local Lab</h1>
+      <p class="subtitle">Hackrange Mentorship</p>
+    </div>
+    <div class="topbar-right">
+      <span id="summary" class="pill pill-muted">Loading...</span>
+      <button id="signout" class="link-button" hidden>Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main id="app" class="container" hidden>
+
+  <section class="meters" aria-label="How hard the lab machine is working">
+    <div class="meter card"><div class="meter-head"><span>Processor</span><strong id="cpu-value">-</strong></div>
+      <div class="bar"><span id="cpu-bar"></span></div><p class="meter-note" id="cpu-note"></p></div>
+    <div class="meter card"><div class="meter-head"><span>Memory</span><strong id="mem-value">-</strong></div>
+      <div class="bar"><span id="mem-bar"></span></div><p class="meter-note" id="mem-note"></p></div>
+    <div class="meter card"><div class="meter-head"><span>Disk</span><strong id="disk-value">-</strong></div>
+      <div class="bar"><span id="disk-bar"></span></div><p class="meter-note" id="disk-note"></p></div>
+    <div class="meter card"><div class="meter-head"><span>Network</span><strong id="net-value">-</strong></div>
+      <div class="bar"><span id="net-bar"></span></div><p class="meter-note" id="net-note"></p></div>
+  </section>
+
+  <section class="card access">
+    <div class="section-head">
+      <h2>How to get into your lab</h2>
+      <span class="hint">One login for everything.  It changes every time you start a lab.</span>
+    </div>
+    <div class="access-grid">
+      <div>
+        <div class="kv"><span>Username</span><code id="acc-user">student</code></div>
+        <div class="kv"><span>Password</span><code id="acc-pass" class="secret"></code>
+          <button class="small" data-reveal="acc-pass">Show</button><button class="small" data-copy="acc-pass">Copy</button></div>
+      </div>
+      <div>
+        <div class="kv"><span>Web desktop</span><a id="acc-web" target="_blank" rel="noopener noreferrer"></a></div>
+        <div class="kv"><span>SSH</span><code id="acc-ssh"></code><button class="small" data-copy="acc-ssh">Copy</button></div>
+        <div class="kv"><span>Remote Desktop</span><code id="acc-rdp"></code></div>
+      </div>
+    </div>
+    <p class="hint" id="acc-where"></p>
+  </section>
+
+  <div class="section-head outside">
+    <h2>Your labs</h2>
+    <span class="hint">One lab runs at a time.  Starting another one ends the one before it.</span>
+  </div>
+  <section id="labs" class="grid"></section>
+
+  <section id="check-card" class="card" hidden>
+    <div class="section-head">
+      <h2 id="check-title">Your work</h2>
+      <span id="check-when" class="hint"></span>
+    </div>
+    <pre id="check-output" class="output"></pre>
+  </section>
+</main>
+
+<main id="login" class="login" hidden>
+  <form id="login-form" class="card login-card" autocomplete="off">
+    <img src="static/logo.png" alt="HackRange" class="login-logo">
+    <h2>Sign in to your lab</h2>
+    <label>Username <input name="username" value="student" autocomplete="username"></label>
+    <label>Password <input name="password" type="password" autocomplete="current-password" autofocus></label>
+    <p id="login-error" class="error" hidden></p>
+    <button type="submit" class="primary">Sign in</button>
+    <p class="hint">Your password is shown by <code>/opt/hackrange-mentorship/show_information.sh</code> on your Ubuntu machine.</p>
+  </form>
+</main>
+
+<footer class="footer container">
+  <span>To see your login again on your Ubuntu machine: <code>/opt/hackrange-mentorship/show_information.sh</code></span>
+  <span id="updated"></span>
+</footer>
+
+<template id="lab-template">
+  <article class="card component">
+    <div class="comp-head">
+      <div><h3 class="comp-name"></h3><span class="tag comp-week"></span><span class="tag comp-kind"></span></div>
+      <span class="pill comp-state"></span>
+    </div>
+    <p class="comp-desc"></p>
+    <div class="comp-usage usage"></div>
+    <div class="comp-links"></div>
+    <p class="comp-error error" hidden></p>
+    <div class="comp-actions">
+      <button class="primary comp-start">Start</button>
+      <a class="button-link comp-open" target="_blank" rel="noopener noreferrer" hidden>Open the lab</a>
+      <button class="secondary comp-check" hidden>Check my work</button>
+      <button class="link-button comp-stop" hidden>End this lab</button>
+    </div>
+  </article>
+</template>
+</body>
+</html>

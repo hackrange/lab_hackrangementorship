@@ -350,6 +350,12 @@ status() {
     chk "Docker" "d info" "sudo systemctl restart docker"
     chk "web desktop (https://127.0.0.1:$WEB_PORT)" \
         "curl -fsS -o /dev/null https://127.0.0.1:$WEB_PORT/guacamole/" "sudo systemctl restart nginx"
+    # Through nginx, not straight at the socket: the panel being alive is not
+    # the same thing as a student being able to reach it, and the door is the
+    # half that breaks.
+    chk "control panel (https://127.0.0.1:$WEB_PORT/control/)" \
+        "curl -fsS -o /dev/null https://127.0.0.1:$WEB_PORT/control/api/whoami" \
+        "sudo systemctl restart hackrange-mentorship-control"
     for c in hackrange-mentorship-guacd hackrange-mentorship-guacamole; do
         chk "$c" "[ \"\$(d inspect -f '{{.State.Running}}' $c)\" = true ]" "sudo docker restart $c"
     done

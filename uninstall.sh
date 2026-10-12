@@ -43,16 +43,36 @@ if [ -f /etc/sysctl.d/90-hackrange-x86-emulation.conf ]; then
     sysctl -qw vm.legacy_va_layout=0
 fi
 
+say "removing the control panel"
+systemctl disable --now hackrange-mentorship-control >/dev/null 2>&1
+rm -f /etc/systemd/system/hackrange-mentorship-control.service
+rm -rf /usr/local/lib/hackrange-mentorship /run/hackrange-mentorship
+
 say "removing nginx's lab sites"
-rm -rf /etc/nginx/hackrange-brand
+# Every name here is one the installer really writes.  They did not match
+# before, which left this machine's nginx holding a site that named a
+# certificate this script had just deleted: nginx then refused to start at
+# all, so uninstalling the lab broke whatever else the machine was serving.
+rm -rf /etc/nginx/mentorship-brand
 rm -f /etc/apt/apt.conf.d/90hackrange-wait-for-lock
-rm -f /etc/nginx/conf.d/hackrange-lab.conf /etc/nginx/conf.d/hackrange-mentorship-access.conf /etc/nginx/conf.d/hackrange-hostcheck.conf \
-      /etc/nginx/conf.d/hackrange-host-access.conf \
-      /etc/nginx/hackrange-private-only.conf /etc/nginx/modules-enabled/99-hackrange-stream.conf
-systemctl disable hackrange-mentorship-access >/dev/null 2>&1
-rm -f /etc/systemd/system/hackrange-mentorship-access.service /usr/local/sbin/hackrange-mentorship-access
-rm -rf /etc/nginx/stream.d /etc/nginx/mentorship-tls /etc/systemd/system/nginx.service.d/hackrange.conf
-systemctl reload nginx >/dev/null 2>&1 || true
+rm -f /etc/nginx/conf.d/mentorship-access.conf \
+      /etc/nginx/conf.d/mentorship-hostcheck.conf \
+      /etc/nginx/mentorship-private-only.conf \
+      /etc/nginx/modules-enabled/99-mentorship-stream.conf
+systemctl disable --now hackrange-access >/dev/null 2>&1
+rm -f /etc/systemd/system/hackrange-access.service /usr/local/sbin/hackrange-access
+rm -rf /etc/nginx/mentorship-tls /etc/systemd/system/nginx.service.d/hackrange.conf
+# Reload only if the remaining configuration is valid, and say so if it is
+# not: a silent "|| true" here is how a machine ends up with nginx down and
+# nothing to explain it.
+if systemctl is-active --quiet nginx; then
+    if nginx -t >/dev/null 2>&1; then
+        systemctl reload nginx >/dev/null 2>&1 || true
+    else
+        say "nginx's remaining configuration is not valid, so it was left alone."
+        say "Check it with: sudo nginx -t"
+    fi
+fi
 
 say "removing the lab network address and names"
 command -v nft >/dev/null 2>&1 && nft delete table inet hackrange_guard 2>/dev/null || true
@@ -87,8 +107,10 @@ docker image prune -f >/dev/null 2>&1
 docker builder prune -af >/dev/null 2>&1
 
 say "removing the lab's files"
-rm -rf "$HR_ETC" /var/cache/hackrange /var/lib/hackrange /usr/local/lib/hackrange \
-       /usr/local/bin/hackrange-lab /usr/share/applications/hackrange-lab.desktop
+rm -rf "$HR_ETC" /var/cache/hackrange /var/lib/hackrange \
+       /usr/local/bin/hackrange-lab /usr/local/bin/hackrange-check \
+       /usr/local/sbin/hackrange-diag \
+       /usr/share/applications/hackrange-lab.desktop
 groupdel hackrange-mentorship-guac 2>/dev/null || true
 systemctl daemon-reload
 

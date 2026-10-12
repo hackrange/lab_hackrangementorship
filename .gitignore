@@ -1,0 +1,3 @@
+# Python leaves these behind when the panel is run or imported by hand.
+__pycache__/
+*.pyc

@@ -227,7 +227,17 @@ info() {
         return
     fi
 
-    printf '%s  Open the lab in a web browser%s\n' "$b" "$o"
+    # The panel first, because it is the one address that answers every
+    # question below it: it shows this password, what the machine is doing, and
+    # a button for each lab.  Everything after it is for a student who would
+    # rather type than click, which is why none of it was removed.
+    printf '%s  The lab control panel  (start a lab, open it, see how it is doing)%s\n' "$b" "$o"
+    if [ -n "$ip" ] && is_private "$ip"; then
+        printf '      From your own computer:   https://%s:%s/control/\n' "$ip" "$WEB_PORT"
+    fi
+    printf '      From this Ubuntu machine: https://127.0.0.1:%s/control/\n\n' "$WEB_PORT"
+
+    printf '%s  Or open the lab in a web browser%s\n' "$b" "$o"
     if [ -n "$ip" ] && is_private "$ip"; then
         printf '      From your own computer:   https://%s:%s\n' "$ip" "$WEB_PORT"
     fi
