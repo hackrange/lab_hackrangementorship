@@ -130,7 +130,17 @@ start() {
     # desktop or a terminal, and four of the seven labs are terminals.  Rotating
     # first would configure the browser for the lab that ran last, so a student
     # would open their terminal lab and get an empty desktop.
-    asroot install -m 600 /dev/stdin "$STATE" <<< "$key"
+    # A plain redirect, not "install /dev/stdin".  That form opens the shell's
+    # own standard input back through /proc/self/fd/0, which is a pipe or an
+    # already unlinked temporary file depending on the shell, and opening it by
+    # name can fail with "No such file or directory".  When it did, this file
+    # kept the PREVIOUS lab's name: the web desktop's connection was then built
+    # from that name, so the browser offered a terminal for a desktop lab, or a
+    # desktop for a terminal one, and would not connect at all.  Nothing said
+    # why, because this script does not stop on an error.  So it stops here.
+    asroot bash -c 'umask 077; printf "%s\n" "$2" > "$1" && chmod 600 "$1"' \
+        hackrange-lab "$STATE" "$key" \
+        || fail "Could not record which lab is running ($STATE)."
     asroot "$ACCESS" rotate || fail "Could not make a new lab password."
     asroot "$ACCESS" cert || true
 
