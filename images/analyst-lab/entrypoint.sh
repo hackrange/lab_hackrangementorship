@@ -13,6 +13,19 @@ mkdir -p /run/dbus
 rm -f /run/dbus/pid
 dbus-daemon --system --fork 2>/dev/null || true
 
+# Clear the run state left behind by the PREVIOUS life of this container.
+# Docker restarts a container after a reboot or a crash with its writable layer
+# intact, so the pid file xrdp-sesman wrote before the machine went down is
+# still sitting there.  sesman reads it, says "xrdp-sesman is already running",
+# and exits; the restart policy then loops on that forever, so the lab never
+# comes back from a reboot and the only cure was deleting the container by
+# hand.  None of this state is worth keeping across a restart, so none is kept.
+rm -f /run/xrdp/*.pid /var/run/xrdp/*.pid 2>/dev/null || true
+rm -f /run/xrdp/sockdir/sesman.socket /run/xrdp/sockdir/.sesman.socket.lock 2>/dev/null || true
+rm -f /tmp/.X*-lock /tmp/.X11-unix/X* 2>/dev/null || true
+mkdir -p /run/xrdp /tmp/.X11-unix
+chmod 1777 /tmp/.X11-unix 2>/dev/null || true
+
 # xrdp-sesman must be up before xrdp accepts a session.
 /usr/sbin/xrdp-sesman
 exec /usr/sbin/xrdp --nodaemon
