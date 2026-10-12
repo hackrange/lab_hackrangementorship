@@ -202,7 +202,22 @@ rotate() {
 ensure() {
     local pw; pw="$(password)"
     if [ -z "$pw" ]; then rotate; return; fi
-    [ -s "$GUAC_DIR/user-mapping.xml" ] || { write_mapping "$pw"; drop_sessions; }
+    # Rewrite the mapping when it is missing OR when it is an older one that
+    # does not offer both connections.  The second half matters on an upgrade,
+    # and leaving it out was a bug: an existing install already has a mapping,
+    # so nothing would have replaced the single connection it was written with,
+    # while the control panel's Open button had moved on to naming one of the
+    # two new ones.  The button would have opened a connection that does not
+    # exist, on exactly the machines that were working yesterday.
+    local m="$GUAC_DIR/user-mapping.xml"
+    if [ ! -s "$m" ] ||
+       ! grep -qF "name=\"$GUAC_RDP_NAME\"" "$m" 2>/dev/null ||
+       ! grep -qF "name=\"$GUAC_SSH_NAME\"" "$m" 2>/dev/null; then
+        write_mapping "$pw"
+        # The sessions have to go with it: a browser already signed in holds
+        # the connections it was given, which are the ones being replaced.
+        drop_sessions
+    fi
 }
 # ---------------------------------------------------------------- certificate
 

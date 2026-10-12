@@ -26,8 +26,14 @@ EOF
 )
 
 # The web desktop's login file must exist before its service starts.  A first
-# install makes the first password here; every lab start makes a new one.
-[ -s "$HR_ETC/guacamole/user-mapping.xml" ] || quiet hackrange-access rotate ||
+# install makes the first password here, and it then lasts until the student
+# asks for a new one with "hackrange-lab reset".
+#
+# "ensure" makes a password and a mapping if there is none, and brings an older
+# mapping up to date without changing the password.  It used to be "rotate",
+# guarded by the file merely existing, which meant an upgrade kept whatever
+# mapping it already had.
+quiet hackrange-access ensure ||
     die "Could not make the lab password."
 
 # The branding extension Guacamole loads at start.  Packaged with fixed
