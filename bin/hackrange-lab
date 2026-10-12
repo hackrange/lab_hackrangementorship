@@ -69,7 +69,7 @@ address() {
 }
 
 # ------------------------------------------------------------------ catalog
-# A row is: key|image|proto|caps|companion|weeks|title
+# A row is: key|image|proto|caps|companion|weeks|title|web
 row() { grep -vE '^\s*#|^\s*$' "$CATALOG" | awk -F'|' -v k="$1" '$1==k {print; exit}'; }
 field() { echo "$1" | cut -d'|' -f"$2"; }
 keys()  { grep -vE '^\s*#|^\s*$' "$CATALOG" | cut -d'|' -f1; }
@@ -260,7 +260,13 @@ env_for() {
     case "$key" in
         splunk)
             printf '\n'; bold "Splunk, inside the lab"
-            printf '  address:   http://localhost:8000  (the Splunk icon on the desktop)\n'
+            # Name the address on the student's own network FIRST.  The desktop
+            # icon still works, but on an ARM machine this lab runs emulated
+            # and its own Firefox is painfully slow, so the browser the student
+            # already has open is both the faster route and the one they will
+            # keep using.
+            printf '  address:   http://%s:8000        (from your own computer)\n' "$(address)"
+            printf '             http://localhost:8000     (inside the lab, or the desktop icon)\n'
             printf '  user:      admin\n'
             printf '  password:  Changeme123\n' ;;
         webapp-gui)
