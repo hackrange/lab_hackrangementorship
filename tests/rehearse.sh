@@ -189,17 +189,29 @@ web_checks() {
         [ -n "$spec" ] || continue
         port="${spec%%/*}"
         case "$port" in ''|*[!0-9]*) continue ;; esac
+        # Wait for it first.  Splunk takes most of a minute to start serving,
+        # and the first version of this check asked immediately and then
+        # reported the lab broken twice over, on a lab that was merely still
+        # starting.  A check that cannot tell "not yet" from "never" is worse
+        # than no check, because it teaches you to ignore it.
+        local i=0 code=""
+        while [ "$i" -lt 90 ]; do
+            code="$(inlab "curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1:$port/" 2>/dev/null)"
+            case "$code" in 2??|3??) break ;; esac
+            i=$((i+1)); sleep 2
+        done
+        case "$code" in
+            2??|3??) ok "$key: port $port answers ($code)" ;;
+            *) bad "$key: port $port answered '$code'" "the student's browser would get nothing" ;;
+        esac
+        # Only now the binding, which is what decides whether publishing it
+        # can work at all.
         if inlab "ss -lnt 'sport = :$port'" 2>/dev/null | grep -qE '0\.0\.0\.0:'"$port"'|\*:'"$port"; then
             ok "$key: port $port listens on every address, so it can be published"
         else
             bad "$key: port $port is not listening on every address" \
                 "the address a student is given for it would refuse them"
         fi
-        code="$(inlab "curl -s -o /dev/null -w '%{http_code}' --max-time 60 http://127.0.0.1:$port/" 2>/dev/null)"
-        case "$code" in
-            2??|3??) ok "$key: port $port answers ($code)" ;;
-            *) bad "$key: port $port answered '$code'" "the student's browser would get nothing" ;;
-        esac
     done <<< "$(printf '%s\n' "$w" | tr ',' '\n')"
 }
 
