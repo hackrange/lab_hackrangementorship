@@ -48,9 +48,12 @@ WHAT = {
 EMULATED = {
     "splunk": "Splunk publishes no ARM build, so on this machine this one lab "
               "runs as x86 under emulation.  Give it about three minutes after "
-              "it starts before Splunk will answer.  Once it is up it is "
-              "responsive enough to work in, and you can also open it from "
-              "your own browser at the address on this card.",
+              "it starts before Splunk will answer; after that it is "
+              "responsive enough to work in.  The button opens Splunk in your "
+              "own browser rather than in the lab's desktop, because only "
+              "Splunk is emulated that way and your machine does the drawing. "
+              " The desktop is still there on the Remote Desktop port if you "
+              "want it.",
 }
 GENERIC_EMULATED = ("This lab is built for a different processor from this "
                     "machine, so it runs under emulation and will be slow.")

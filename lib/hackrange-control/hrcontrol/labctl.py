@@ -22,6 +22,8 @@ from __future__ import annotations
 import platform
 import re
 import socket
+import urllib.error
+import urllib.request
 import threading
 import time
 
@@ -111,6 +113,24 @@ def _mapping_has(proto: str) -> bool:
     return bool(re.search(r"<protocol>\s*" + re.escape(proto) + r"\s*</protocol>", text))
 
 
+def _web_answers(port: int) -> bool:
+    """Is the lab's own web app serving yet, not merely published?
+
+    A plain socket test is worthless here.  Docker publishes a port by putting
+    its own proxy in front of it, and that proxy accepts a connection the
+    instant the container exists, long before anything inside is listening.  So
+    this asks for a page, and any HTTP reply at all counts: a login redirect, a
+    401 or even a 404 all mean something is answering, where nothing answering
+    is what we are looking for.
+    """
+    try:
+        urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=3)
+        return True
+    except urllib.error.HTTPError:
+        return True          # it answered, and said no.  Still answering.
+    except (urllib.error.URLError, OSError, ValueError):
+        return False
+
 def ready(lab: dict) -> bool:
     """Can a student actually open this lab right now?
 
@@ -126,12 +146,23 @@ def ready(lab: dict) -> bool:
         lab's connection, so for a few seconds it is up and not yet serving.
       - the web desktop offers a connection for this lab's protocol at all,
         which is really a check that its login file is there and whole.
+
+    An emulated lab with a web app of its own has a fourth: that web app has to
+    be answering.  For such a lab the card sends the student to their own
+    browser rather than to the web desktop, so the thing that must be ready is
+    the thing the button opens.  Splunk on an ARM machine answers about three
+    minutes after the lab starts, which is a long time to leave a button
+    sitting there promising something it cannot yet do.
     """
     inner = SSH_INNER if lab.get("proto") == "ssh" else RDP_INNER
-    return (_port_open(inner)
+    if not (_port_open(inner)
             and _container_running(GUAC_CONTAINER)
             and _port_open(GUAC_UPSTREAM)
-            and _mapping_has(lab.get("proto") or "rdp"))
+            and _mapping_has(lab.get("proto") or "rdp")):
+        return False
+    if emulated(lab):
+        return all(_web_answers(w["port"]) for w in lab.get("web") or [])
+    return True
 
 
 def states() -> dict[str, str]:
