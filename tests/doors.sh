@@ -73,8 +73,20 @@ case "$b" in
     *)     bad "nothing answers SSH on $SSH_PORT" \
                "the student sees 'Connection closed by <host> port $SSH_PORT'" ;;
 esac
-accepts "$RDP_PORT" && ok "Remote Desktop on $RDP_PORT accepts" \
-                    || bad "nothing accepts on Remote Desktop port $RDP_PORT"
+# A port that accepts is not a desktop that opens, so go as far as a client
+# goes: ask for the connection and start the TLS the answer asks for.  That is
+# where an xrdp which cannot read its own key fails, and that fault reached a
+# student with nothing but "Upstream error" to show for it.
+if [ "$PROTO" = rdp ]; then
+    out="$(python3 "$HR_ROOT/tests/rdp-handshake.py" "$RDP_PORT" 2>&1)"
+    case "$out" in
+        confirmed*) ok "Remote Desktop on $RDP_PORT begins a session ($out)" ;;
+        *)          bad "Remote Desktop on $RDP_PORT did not begin a session" "$out" ;;
+    esac
+else
+    accepts "$RDP_PORT" && ok "Remote Desktop on $RDP_PORT accepts" \
+                        || bad "nothing accepts on Remote Desktop port $RDP_PORT"
+fi
 
 head2 "the control panel"
 code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 15 "$PANEL/api/whoami")"
@@ -94,7 +106,10 @@ code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 20 -b "$JAR" "$PANEL/
                   || bad "the panel's state gave '$code'"
 
 head2 "Open the lab, which must not ask for the password again"
-loc="$(curl -sk -o /dev/null -w '%{redirect_url}' --max-time 20 -b "$JAR" "$PANEL/open")"
+# The raw header, not curl's resolved redirect_url: the address carries the
+# session after a "#", and resolving it drops the fragment along with it.
+loc="$(curl -sk -o /dev/null -D - --max-time 20 -b "$JAR" "$PANEL/open" 2>/dev/null |
+       awk 'tolower($1)=="location:" {print $2; exit}' | tr -d '\r')"
 case "$loc" in
     *"/guacamole/#/client/"*) ok "Open sends the student at the running lab" ;;
     "")                       bad "Open sent the student nowhere" "no redirect at all" ;;

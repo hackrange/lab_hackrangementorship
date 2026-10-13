@@ -195,6 +195,19 @@ rdp_checks() {
         bad "$key: xrdp cannot read its TLS key ($keyfile)" \
             "every connection is refused before a password is asked for; add xrdp to the ssl-cert group"
     fi
+    # Then go as far as a client goes: ask the desktop for a connection and
+    # start the TLS it asks for in reply.  Reading the key is the cause that
+    # was found; completing a handshake is the thing the student needs, and it
+    # can fail for reasons nobody has met yet.
+    local ip
+    ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$NAME" 2>/dev/null | awk '{print $1}')"
+    if [ -n "$ip" ] && [ -f "$HERE/tests/rdp-handshake.py" ]; then
+        local out; out="$(python3 "$HERE/tests/rdp-handshake.py" 3389 "$ip" 2>&1)"
+        case "$out" in
+            confirmed*) ok "$key: the desktop begins a session ($out)" ;;
+            *)          bad "$key: the desktop would not begin a session" "$out" ;;
+        esac
+    fi
     # And no complaint in its own log, which is the only place the real reason
     # ever appears.
     if docker exec "$NAME" sh -c 'grep -qiE "cannot read private key|key file" /var/log/xrdp.log 2>/dev/null' >/dev/null 2>&1; then
