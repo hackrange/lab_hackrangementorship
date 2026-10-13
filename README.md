@@ -227,28 +227,6 @@ none of it reaches the internet.
 sudo /opt/hackrange-mentorship/uninstall.sh
 ```
 
-## Testing a change
-
-`tests/rehearse.sh` starts every lab the way a student meets it and asks the
-questions its lessons depend on: does the door open, is the tool the lesson
-names installed, does the command the lesson prints return something real.
-
-```
-sudo tests/rehearse.sh            every lab
-sudo tests/rehearse.sh netlab     one of them
-```
-
-`tests/doors.sh` checks the other half, which is everything between you and a
-lab: the published ports, the control panel, signing in, and whether **Open the
-lab** really opens it.  It runs against this install rather than a throwaway
-container, because that gap is where the faults a student meets first have
-lived.
-
-```
-sudo tests/doors.sh               the lab that is running
-sudo tests/doors.sh splunk        start that lab first, then check
-```
-
 ## Reporting a problem
 
 Security issues: see [SECURITY.md](SECURITY.md). Anything else: open an issue,

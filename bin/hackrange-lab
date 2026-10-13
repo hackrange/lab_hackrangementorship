@@ -45,7 +45,7 @@ NAME=hackrange-mentorship-lab          # the running lab, whichever it is
 COMPANION=hackrange-mentorship-dast    # the Week 11 sidecar, when a lab wants one
 PAIRNET=hackrange-mentorship-pair      # the private network the pair shares
 
-# The capabilities and budgets, shared with tests/rehearse.sh.
+# The capabilities and budgets.
 . "$HR_ROOT/bin/lab-runopts.sh"
 
 bold() { printf '\e[1m%s\e[0m\n' "$*"; }

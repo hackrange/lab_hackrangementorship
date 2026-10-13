@@ -1,3 +1,7 @@
 # Python leaves these behind when the panel is run or imported by hand.
 __pycache__/
 *.pyc
+
+# My own test harness lives here.  It is not part of a student install and
+# this is a public repository, so it is kept out of it.
+.claude/
