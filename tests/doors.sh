@@ -140,19 +140,38 @@ for c in hackrange-mentorship-guacamole hackrange-mentorship-guacd; do
     [ "$s" = running ] && ok "$c is running" || bad "$c is '$s'"
 done
 # guacd is what actually dials the lab, from inside its own container, so ask
-# it rather than asking the host.  "Upstream error" with everything on the host
-# looking fine is this hop failing.
-inner=13490; [ "$PROTO" = ssh ] && inner=12223
-if docker exec hackrange-mentorship-guacd \
-       sh -c "timeout 8 sh -c 'exec 3<>/dev/tcp/host.docker.internal/$inner'" >/dev/null 2>&1 ||
-   docker exec hackrange-mentorship-guacd \
-       sh -c "timeout 8 sh -c 'exec 3<>/dev/tcp/172.17.0.1/$inner'" >/dev/null 2>&1; then
-    ok "guacd can reach the lab's own door"
+# it rather than asking the host.  It reaches the lab by the name and port its
+# own connection names, which is the only pair worth testing: "Upstream error"
+# with everything on the host looking fine is this one hop failing.
+MAP="$HR_ETC/guacamole/user-mapping.xml"
+gname="$([ "$PROTO" = ssh ] && echo terminal || echo desktop)"
+# The hostname and port belonging to THIS lab's connection, not whichever came
+# first in the file: the two connections differ in both.
+pair="$(awk -v want="Hackrange Mentorship Lab ($gname)" '
+    index($0, "name=\"" want "\"") { inside = 1 }
+    inside && /name="hostname"/  { h = $0 }
+    inside && /name="port"/      { p = $0 }
+    inside && /<\/connection>/   { print h "\n" p; exit }
+' "$MAP" 2>/dev/null | sed -e 's/.*>\([^<]*\)<.*/\1/' | tr '\n' ' ')"
+ghost="$(echo "$pair" | awk '{print $1}')"
+gport="$(echo "$pair" | awk '{print $2}')"
+if [ -z "$ghost" ] || [ -z "$gport" ]; then
+    bad "the web desktop has no connection for this lab" \
+        "expected one called 'Hackrange Mentorship Lab ($gname)' in $MAP"
 else
-    # Not a failure on its own: how guacd addresses the lab differs by setup,
-    # and the connection parameters are what settle it.
-    host="$(grep -oE 'hostname[^<]*' "$HR_ETC/guacamole/user-mapping.xml" 2>/dev/null | head -1)"
-    bad "could not prove guacd reaches the lab" "its connection says: ${host:-nothing}"
+    # guacd's own image is Alpine with nothing in it that can open a socket, so
+    # the probe borrows the web desktop's image and runs it in guacd's network,
+    # which is the position that matters.  That image is always installed here,
+    # so this needs nothing fetched.
+    gimage="$(docker inspect -f '{{.Config.Image}}' hackrange-mentorship-guacamole 2>/dev/null)"
+    if docker run --rm --network "container:hackrange-mentorship-guacd" \
+            --entrypoint bash "$gimage" \
+            -c "exec 3<>/dev/tcp/$ghost/$gport" >/dev/null 2>&1; then
+        ok "guacd reaches the lab at $ghost:$gport, which is what its connection says"
+    else
+        bad "guacd cannot reach $ghost:$gport" \
+            "this is the hop that shows up as 'Upstream error' and nothing else"
+    fi
 fi
 
 head2 "a lab's own web app, if it has one"
