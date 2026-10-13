@@ -70,9 +70,11 @@ machine:
 machine the panel's button for this card opens that address for you rather than
 opening the lab's desktop, because this is the way to use this lab here.
 
-The lessons for these weeks all work inside Splunk's own pages, so that is all
-you need. Treat the lab's desktop as unavailable for this one lab on an ARM
-machine: the other six labs are unaffected and open normally.
+The lab's desktop does still connect, both on the Remote Desktop port and
+through the web desktop. Every frame of it is drawn under emulation, so it is
+brutally slow, and the lessons for these weeks all work inside Splunk's own
+pages anyway. You lose nothing by staying in your own browser. The other six
+labs are unaffected and open normally.
 
 ## Using it
 

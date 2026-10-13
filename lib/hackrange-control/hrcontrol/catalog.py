@@ -52,7 +52,9 @@ EMULATED = {
               "responsive enough to work in.  The button opens Splunk in your "
               "own browser, which on this machine is the way to use this lab: "
               "only Splunk is emulated that way, and your own machine does all "
-              "the drawing.",
+              "the drawing.  The lab's desktop does still connect, on the "
+              "Remote Desktop port, but drawing it under emulation is brutally "
+              "slow.",
 }
 GENERIC_EMULATED = ("This lab is built for a different processor from this "
                     "machine, so it runs under emulation and will be slow.")
