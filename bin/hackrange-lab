@@ -176,8 +176,8 @@ start() {
     #
     # These bind every address, not just loopback, because the whole point is
     # that the student reaches them from the machine they are sitting at.  On an
-    # ARM machine this is also what makes the Splunk lab usable at all, since
-    # driving it through the lab's own emulated Firefox is painfully slow.
+    # ARM machine it also gives the Splunk lab a second way in, where only
+    # Splunk itself is emulated and the drawing is native.
     local webports=() spec wp
     local web; web="$(field "$r" 8)"
     if [ -n "$web" ] && [ "$web" != "-" ]; then
@@ -211,11 +211,12 @@ start() {
     # broken.
     if [ -n "$platspec" ]; then
         printf '\n  This lab is built for a different processor from this machine, so it\n'
-        printf '  runs under emulation.  It works, and it is slow: give it a few minutes\n'
-        printf "  to come up, and expect the desktop's own browser to be painful.\n"
+        printf '  runs under emulation.  It works.  What it needs is patience at the\n'
+        printf '  start: give it about three minutes before it will answer.  After that\n'
+        printf '  it is responsive enough to work in.\n'
         if [ -n "$web" ] && [ "$web" != "-" ]; then
-            printf '  Open its web app from your own browser instead; "hackrange-lab env"\n'
-            printf '  prints the address.\n'
+            printf '  You can also open its web app from your own browser;\n'
+            printf '  "hackrange-lab env" prints the address.\n'
         fi
         printf '\n'
     fi

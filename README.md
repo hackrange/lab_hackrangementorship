@@ -50,27 +50,24 @@ Measured on the same lab on both kinds of machine:
 | Splunk serving a page | 13 ms | 1 ms |
 | a search counting events by sourcetype | 3.9 s | 0.3 s |
 
-This lab does work on an ARM machine. It is slow: give it about three minutes
-after starting it before Splunk will answer at all, where natively it is ready
-in seconds. The panel's card for it says so, and so does `hackrange-lab start`.
+This lab does work on an ARM machine. What it needs is patience at the start:
+give it about three minutes after starting it before Splunk will answer at all,
+where natively it is ready in seconds. The panel's card for it says so, and so
+does `hackrange-lab start`.
 
-Once it is up, Splunk itself is roughly twelve times slower and still perfectly
-workable: a search that answers in a third of a second on an x86 machine
-answers in about four. What is genuinely painful is the browser *inside* the
-lab's desktop, because every frame it draws is translated instruction by
-instruction and then sent to you over the remote desktop. Through that browser
-this lab feels close to unusable, and that is the emulator, not the lab.
+After that it is responsive enough to work in. Splunk itself is roughly twelve
+times slower and still perfectly workable: a search that answers in a third of
+a second on an x86 machine answers in about four.
 
-So on an ARM machine, do not use the browser inside the lab. Open Splunk from
-the browser you are already using, at port 8000 on the machine running the lab:
+You can also open Splunk from the browser you are already using, at port 8000
+on the machine running the lab, which keeps all the drawing on your own
+machine:
 
     http://<the address of the Ubuntu machine>:8000
 
 `hackrange-lab env` prints that address next to the Splunk login, and
-`show_information.sh` lists it whenever the Splunk lab is running. Only Splunk
-is emulated then, and all the drawing happens natively on your own machine,
-which is the difference between waiting on every click and not noticing. The
-lab's desktop is still there for the lessons that use a terminal.
+`show_information.sh` lists it whenever the Splunk lab is running. The lab's
+own desktop works too, and is what the lessons that use a terminal need.
 
 ## Using it
 

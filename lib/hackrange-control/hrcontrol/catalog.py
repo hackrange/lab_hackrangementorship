@@ -47,10 +47,10 @@ WHAT = {
 # is slow and one who thinks they have broken something.
 EMULATED = {
     "splunk": "Splunk publishes no ARM build, so on this machine this one lab "
-              "runs as x86 under emulation.  It is slow to start, and slow "
-              "enough through the lab's own browser to be painful.  Open "
-              "Splunk from the browser you are already using instead, at the "
-              "address on this card.",
+              "runs as x86 under emulation.  Give it about three minutes after "
+              "it starts before Splunk will answer.  Once it is up it is "
+              "responsive enough to work in, and you can also open it from "
+              "your own browser at the address on this card.",
 }
 GENERIC_EMULATED = ("This lab is built for a different processor from this "
                     "machine, so it runs under emulation and will be slow.")
