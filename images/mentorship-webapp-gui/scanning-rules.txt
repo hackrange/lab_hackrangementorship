@@ -1,0 +1,40 @@
+================================================================
+  AUTHORIZED TARGETS ONLY.  READ THIS BEFORE YOU SCAN ANYTHING.
+================================================================
+
+Everything this week's work needs is inside this lab:
+
+    the portal   http://portal.lab:5000      (the target)
+    the scanner  http://dast:8888            (admin / student)
+
+Those are yours.  Attack them as hard as you like.
+
+Do NOT point Burp, the scanner, nmap, or anything else in this lab
+at a website, an address, or a service that you do not have
+written permission to test.
+
+Scanning or attacking a computer you do not have permission to
+touch is a crime.  In the United States that is the Computer
+Fraud and Abuse Act, and most other countries have their own
+version.  People are prosecuted and people go to prison for it.
+It will not help you that you were learning, that you broke
+nothing, that the system was wide open, or that you stopped when
+you realized.  The offense is the access, not the damage.
+
+Written permission means a signed engagement letter, a contract,
+or a bug bounty program whose published scope names the target
+you are testing.  "They probably would not mind" is not
+permission.  A friend saying "sure, try it" about a system their
+employer owns is not permission either.
+
+One more thing specific to this lab.  It runs on your own machine
+and uses your own internet connection, so there is nothing
+between a mistyped address and a real company's servers.  A
+scanner aimed one character wrong will happily go and find them.
+Check the target before every scan.
+
+If you want somewhere legal to practise outside this course, look
+for a bug bounty program with a published scope, or stand up your
+own copy of a deliberately vulnerable app.
+
+To read this again:  cat ~/Desktop/SCANNING-RULES.txt

@@ -186,6 +186,28 @@ The other challenges are a piece of reasoning rather than a string to find, and
 those labs carry the instructor's own answer key: `check` runs it so you can
 compare your working to it.
 
+## Only ever attack the lab
+
+The Week 11 challenge lab hands you a web proxy, a scanner, and a deliberately
+vulnerable app to point them at. The app and the scanner inside that lab are
+yours, and you should attack them as hard as you like.
+
+Nothing else is. Scanning or attacking a system you do not have written
+permission to test is a crime: in the United States that is the Computer Fraud
+and Abuse Act, and most other countries have their own version. People are
+prosecuted for it. It does not help that you were learning, that you broke
+nothing, or that the system was wide open. Written permission means a signed
+engagement or a bug bounty program whose published scope names the target.
+"They probably would not mind" is not permission.
+
+This matters more here than in a hosted lab. A Local Lab runs on your own
+machine and uses your own internet connection, so there is nothing between a
+mistyped hostname and a real company's servers. Check the target before every
+scan.
+
+The lab says all of this itself: in a dialog when the desktop opens, in every
+terminal you start, and in `~/Desktop/SCANNING-RULES.txt` to read again.
+
 ## Deliberately fake credentials
 
 This is a training lab, so some of what is inside looks alarming and is not.

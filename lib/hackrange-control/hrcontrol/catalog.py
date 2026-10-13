@@ -58,6 +58,32 @@ GENERIC_EMULATED = ("This lab is built for a different processor from this "
                     "machine, so it runs under emulation and will be slow.")
 
 
+# A standing warning on a card, shown whether the lab is running or not.
+#
+# Separate from the emulation notice, because this one is not about how the lab
+# performs and does not go away on a different machine.  Week 11 is the one lab
+# that hands a student a working scanner, a web proxy and their own internet
+# connection in the same box, and the distance between the target they are
+# meant to attack and somebody else's company is one mistyped hostname.  A
+# student who learns on this course and then scans a stranger has not had bad
+# luck, they have been badly taught.
+WARNINGS = {
+    "webapp-gui": "Authorized targets only.  The portal and the scanner inside "
+                  "this lab are yours to attack.  Pointing Burp, the scanner or "
+                  "anything else in here at a system you have no written "
+                  "permission to test is a crime under the Computer Fraud and "
+                  "Abuse Act and its equivalents, and people are prosecuted for "
+                  "it.  This lab uses your own internet connection, so a "
+                  "mistyped address really does leave it.  The lab repeats this "
+                  "when you open it, and keeps it in "
+                  "~/Desktop/SCANNING-RULES.txt.",
+}
+
+
+def warning(lab: dict) -> str:
+    """The standing warning a card carries, or "" when it has none."""
+    return WARNINGS.get(lab.get("key", ""), "")
+
 def notice(lab: dict, is_emulated: bool) -> str:
     """The plain warning a card carries, or "" when there is nothing to say."""
     if not is_emulated:

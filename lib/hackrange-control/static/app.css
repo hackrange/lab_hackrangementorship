@@ -147,3 +147,18 @@ button.small:hover { border-color: var(--red); color: var(--red); }
   line-height: 1.45;
   border-radius: 0 4px 4px 0;
 }
+
+/* A standing warning, not a status.  Louder than .notice because it is not
+   about how the lab performs: it is the line between a lesson and an offense,
+   and a student who misses it does not get to undo it. */
+.warning-box {
+  margin: 0 0 .75rem;
+  padding: .6rem .75rem;
+  border-left: 4px solid var(--red);
+  background: #FDEDEC;
+  color: #6E0B04;
+  font-size: .87rem;
+  font-weight: 500;
+  line-height: 1.5;
+  border-radius: 0 4px 4px 0;
+}

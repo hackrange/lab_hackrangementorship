@@ -36,7 +36,7 @@ RUN apt-get update \
       firefox-esr burpsuite \
       python3 python3-flask \
       nodejs npm \
-      thunar mousepad xdg-utils xclip \
+      thunar mousepad xdg-utils xclip zenity \
  && npm install -g @anthropic-ai/claude-code \
  && npm cache clean --force \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -75,6 +75,7 @@ RUN useradd -m -s /bin/bash -G sudo student \
       > /usr/local/bin/claude-launch \
  && chmod +x /usr/local/bin/claude-launch
 
+COPY scanning-rules.txt /home/student/Desktop/SCANNING-RULES.txt
 COPY app.py  /home/student/app/app.py
 COPY seed.py /home/student/app/seed.py
 COPY portal-wrap.sh /usr/local/bin/portal-wrap
@@ -106,6 +107,41 @@ RUN chmod +x /usr/local/bin/portal-wrap /usr/local/bin/lab-entrypoint /usr/local
       'utilities-terminal' 'Development;' \
  && launcher terminal 'Terminal' 'A shell in your lab' \
       'xfce4-terminal' 'utilities-terminal' 'System;' \
+ && launcher scanning-rules 'Scanning rules (read me)' \
+      'Who you may and may not point these tools at' \
+      'mousepad /home/student/Desktop/SCANNING-RULES.txt' 'text-x-generic' 'System;' \
+ # This is the one lab that hands a student a working scanner and a real
+ # internet connection in the same box, so the rule about who they may point
+ # it at is put in front of them rather than left in the course notes.  Three
+ # places, because a student arrives by three routes: a dialog they have to
+ # dismiss when the desktop starts, a line in every shell they open, and the
+ # file itself on the desktop to read again.
+ # Written as ONE command line on purpose.  A backslash continuation inside
+ # these single quotes reaches the file as two backslashes, which sh parses as
+ # a literal backslash and then treats the next line as a command of its own:
+ # the dialog never appears and "sh -n" calls the file perfectly fine.
+ && printf '%s\n' '#!/bin/sh' \
+      '# Shown once per desktop session.  zenity blocks until it is dismissed,' \
+      '# which is the point: this one is not a message to scroll past.' \
+      'exec zenity --warning --no-markup --width=620 --title="Authorized targets only" --text="$(cat /home/student/Desktop/SCANNING-RULES.txt)"' \
+      > /usr/local/bin/lab-scope-warning \
+ && chmod +x /usr/local/bin/lab-scope-warning \
+ && printf '%s\n' '[Desktop Entry]' 'Type=Application' \
+      'Name=Authorized targets only' \
+      'Exec=/usr/local/bin/lab-scope-warning' \
+      'Terminal=false' 'NoDisplay=true' 'X-GNOME-Autostart-enabled=true' \
+      > /etc/xdg/autostart/zz-lab-scope-warning.desktop \
+ # Every login shell, which covers ssh and the desktop's own terminal.  Short,
+ # because a wall of text at every prompt is a wall of text people stop
+ # reading; the file has the whole of it.
+ && printf '%s\n' \
+      'printf "\\n  \\033[1;31mAuthorized targets only.\\033[0m  The portal and the scanner in this lab\\n"' \
+      'printf "  are yours.  Pointing these tools at anything else without written\\n"' \
+      'printf "  permission is a crime, and this lab has your own internet connection.\\n"' \
+      'printf "  Read it: cat ~/Desktop/SCANNING-RULES.txt\\n\\n"' \
+      > /etc/profile.d/00-lab-scope.sh \
+ && chmod 644 /etc/profile.d/00-lab-scope.sh \
+ && cp /home/student/Desktop/SCANNING-RULES.txt /etc/motd \
  && chown -R student:student /home/student
 
 EXPOSE 3389 22

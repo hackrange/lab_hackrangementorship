@@ -228,6 +228,8 @@ class Handler(BaseHTTPRequestHandler):
                 # reason the student cannot see looks like a lab that is broken.
                 "emulated": emulated,
                 "notice": catalog.notice(lab, emulated),
+                # Said before the lab is even started, not only inside it.
+                "warning": catalog.warning(lab),
                 "usage": metrics.usage_for(labctl.containers_for(key), snap) if live else {},
                 # The lab's own web apps, addressed from the student's machine.
                 # Only while it runs: the port is published by the container,
