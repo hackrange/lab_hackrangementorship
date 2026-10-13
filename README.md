@@ -66,8 +66,13 @@ machine:
     http://<the address of the Ubuntu machine>:8000
 
 `hackrange-lab env` prints that address next to the Splunk login, and
-`show_information.sh` lists it whenever the Splunk lab is running. The lab's
-own desktop works too, and is what the lessons that use a terminal need.
+`show_information.sh` lists it whenever the Splunk lab is running. On an ARM
+machine the panel's button for this card opens that address for you rather than
+opening the lab's desktop, because this is the way to use this lab here.
+
+The lessons for these weeks all work inside Splunk's own pages, so that is all
+you need. Treat the lab's desktop as unavailable for this one lab on an ARM
+machine: the other six labs are unaffected and open normally.
 
 ## Using it
 
