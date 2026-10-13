@@ -175,12 +175,26 @@ else
 fi
 
 head2 "a lab's own web app, if it has one"
+# An emulated lab is given longer, because it needs it and that is not a fault.
+# Measured on an ARM machine: Splunk answers 163 seconds after the lab starts,
+# where it takes a few seconds natively.  A 180 second wait called that a
+# failure once, which is a test too impatient for the thing it was testing.
+image="$(grep -vE '^\s*#|^\s*$' "$HR_ROOT/config/labs.conf" |
+         awk -F'|' -v k="$LAB" '$1==k {print $2; exit}')"
+iarch="$(docker image inspect -f '{{.Architecture}}' "$image" 2>/dev/null)"
+case "$(uname -m)" in x86_64) harch=amd64 ;; aarch64|arm64) harch=arm64 ;; *) harch="" ;; esac
+tries=90
+if [ -n "$iarch" ] && [ -n "$harch" ] && [ "$iarch" != "$harch" ]; then
+    tries=240
+    printf '    emulated on this machine (%s image, %s host), so it is given longer\n' \
+        "$iarch" "$harch"
+fi
 w="$(web_of "$LAB")"
 if [ "$w" = "-" ] || [ -z "$w" ]; then
     ok "$LAB publishes no web app, and none is expected"
 else
     port="${w%%/*}"; label="${w##*/}"
-    for i in $(seq 1 90); do
+    for i in $(seq 1 "$tries"); do
         code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:$port/")"
         case "$code" in 2*|3*) break ;; esac
         sleep 2

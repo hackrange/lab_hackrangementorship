@@ -46,15 +46,20 @@ Measured on the same lab on both kinds of machine:
 
 | | ARM, emulated | x86, native |
 |---|---|---|
+| Splunk ready to answer, from starting the lab | 163 s | a few seconds |
 | Splunk serving a page | 13 ms | 1 ms |
 | a search counting events by sourcetype | 3.9 s | 0.3 s |
 
-Splunk itself is roughly twelve times slower and still perfectly workable: a
-search that answers in a third of a second on an x86 machine answers in about
-four. What is genuinely painful is the browser *inside* the lab's desktop,
-because every frame it draws is translated instruction by instruction and then
-sent to you over the remote desktop. Through that browser this lab feels close
-to unusable, and that is the emulator, not the lab.
+This lab does work on an ARM machine. It is slow: give it about three minutes
+after starting it before Splunk will answer at all, where natively it is ready
+in seconds. The panel's card for it says so, and so does `hackrange-lab start`.
+
+Once it is up, Splunk itself is roughly twelve times slower and still perfectly
+workable: a search that answers in a third of a second on an x86 machine
+answers in about four. What is genuinely painful is the browser *inside* the
+lab's desktop, because every frame it draws is translated instruction by
+instruction and then sent to you over the remote desktop. Through that browser
+this lab feels close to unusable, and that is the emulator, not the lab.
 
 So on an ARM machine, do not use the browser inside the lab. Open Splunk from
 the browser you are already using, at port 8000 on the machine running the lab:

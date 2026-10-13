@@ -19,6 +19,7 @@ Author: Tim Rice - tim.j.rice@hackrange.com
 
 from __future__ import annotations
 
+import platform
 import re
 import socket
 import threading
@@ -53,6 +54,37 @@ def _container_running(name: str) -> bool:
 def image_present(image: str) -> bool:
     return run([DOCKER, "image", "inspect", image], timeout=15)[0] == 0
 
+
+_ARCH_CACHE: dict[str, tuple[float, bool]] = {}
+ARCH_TTL = 300.0
+
+
+def emulated(lab: dict) -> bool:
+    """Is this lab a different processor from the machine it is running on?
+
+    Asked of the image rather than of the lab's name, so it stays true if
+    another lab is ever built for one processor only, and false on a machine
+    that runs that image natively.
+
+    Remembered for a few minutes, because the page asks for the whole state
+    every few seconds and an image's processor only changes when it is rebuilt.
+    """
+    image = lab.get("image", "")
+    hit = _ARCH_CACHE.get(image)
+    now = time.time()
+    if hit and now - hit[0] < ARCH_TTL:
+        return hit[1]
+    here = platform.machine()
+    native = {"x86_64": "amd64", "amd64": "amd64",
+              "aarch64": "arm64", "arm64": "arm64"}.get(here, here)
+    rc, out = run([DOCKER, "image", "inspect", "-f", "{{.Architecture}}", image],
+                  timeout=15)
+    arch = out.strip() if rc == 0 else ""
+    if not arch:
+        return False      # not built yet; nothing to say about it
+    answer = arch != native
+    _ARCH_CACHE[image] = (now, answer)
+    return answer
 
 def _port_open(port: int) -> bool:
     """Is the lab's own door answering on this machine yet?"""

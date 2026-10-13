@@ -215,6 +215,7 @@ class Handler(BaseHTTPRequestHandler):
             key = lab["key"]
             state = states.get(key, "unknown")
             live = state in ("running", "starting", "stopping")
+            emulated = labctl.emulated(lab)
             items.append({
                 "key": key,
                 "title": lab["title"],
@@ -223,6 +224,10 @@ class Handler(BaseHTTPRequestHandler):
                 "proto": lab["proto"],
                 "state": state,
                 "has_companion": bool(lab["companion"]),
+                # Said plainly on the card, because a lab that is slow for a
+                # reason the student cannot see looks like a lab that is broken.
+                "emulated": emulated,
+                "notice": catalog.notice(lab, emulated),
                 "usage": metrics.usage_for(labctl.containers_for(key), snap) if live else {},
                 # The lab's own web apps, addressed from the student's machine.
                 # Only while it runs: the port is published by the container,

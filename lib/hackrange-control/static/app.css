@@ -133,3 +133,17 @@ button.small:hover { border-color: var(--red); color: var(--red); }
 .footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--faint);
           font-size: 12.5px; padding-top: 10px; padding-bottom: 26px; }
 @media (max-width: 640px) { .brand { height: 40px; } .titles h1 { font-size: 18px; } .subtitle { display: none; } }
+
+/* A plain warning on a card: a lab that is slow for a reason the student
+   cannot see looks like a lab that is broken, so the reason is on the card.
+   Amber rather than the error red, because nothing here has gone wrong. */
+.notice {
+  margin: 0 0 .75rem;
+  padding: .55rem .7rem;
+  border-left: 3px solid #B26A00;
+  background: #FFF8E6;
+  color: #5A3A00;
+  font-size: .86rem;
+  line-height: 1.45;
+  border-radius: 0 4px 4px 0;
+}

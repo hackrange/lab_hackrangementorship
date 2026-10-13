@@ -37,6 +37,31 @@ WHAT = {
 }
 
 
+# What to tell a student when a lab is not the machine's own processor.
+#
+# Six of the seven labs are built for both, and run natively wherever they are
+# installed.  Splunk publishes no ARM build for Linux at all, so on an Apple
+# Silicon or other ARM machine that one image is built and run as x86 under
+# emulation, and every instruction inside it is translated as it runs.  Saying
+# so on the card is the difference between a student who knows why their lab
+# is slow and one who thinks they have broken something.
+EMULATED = {
+    "splunk": "Splunk publishes no ARM build, so on this machine this one lab "
+              "runs as x86 under emulation.  It is slow to start, and slow "
+              "enough through the lab's own browser to be painful.  Open "
+              "Splunk from the browser you are already using instead, at the "
+              "address on this card.",
+}
+GENERIC_EMULATED = ("This lab is built for a different processor from this "
+                    "machine, so it runs under emulation and will be slow.")
+
+
+def notice(lab: dict, is_emulated: bool) -> str:
+    """The plain warning a card carries, or "" when there is nothing to say."""
+    if not is_emulated:
+        return ""
+    return EMULATED.get(lab.get("key", ""), GENERIC_EMULATED)
+
 def _web(field: str) -> list[dict]:
     """The web apps inside a lab, as [{"port", "label"}]."""
     out = []

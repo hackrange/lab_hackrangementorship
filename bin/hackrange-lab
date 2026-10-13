@@ -164,7 +164,11 @@ start() {
     # OWN network namespace, so this cannot reach the student's machine.
     local runopts; read -r -a runopts <<< "$(lab_run_opts "$proto" "$caps")"
 
-    local platform; read -r -a platform <<< "$(lab_platform_opts "$image")"
+    # Kept as a string as well as an array: "is this lab emulated" is then a
+    # test on a plain variable, rather than on the length of an array that
+    # read may leave unset under set -u.
+    local platspec; platspec="$(lab_platform_opts "$image")"
+    local platform; read -r -a platform <<< "$platspec"
 
     # The web apps inside this lab that a student may open from their OWN
     # browser, from the catalog's web column.  Most labs name none: see
@@ -195,6 +199,25 @@ start() {
             fi
             webports+=(-p "$wp:$wp")
         done <<< "$(printf '%s\n' "$web" | tr ',' '\n')"
+    fi
+
+    # Say so when a lab is not this machine's own processor.  Six of the seven
+    # are built for both and run natively.  Splunk publishes no ARM build for
+    # Linux at all, so on an ARM machine that one runs as x86 under emulation,
+    # and every instruction in it is translated as it runs.  It does work:
+    # measured on an ARM machine, Splunk answers 163 seconds after the lab
+    # starts, against a few seconds natively.  What it is not is quick, and a
+    # student who has not been told why sits watching a lab they believe is
+    # broken.
+    if [ -n "$platspec" ]; then
+        printf '\n  This lab is built for a different processor from this machine, so it\n'
+        printf '  runs under emulation.  It works, and it is slow: give it a few minutes\n'
+        printf "  to come up, and expect the desktop's own browser to be painful.\n"
+        if [ -n "$web" ] && [ "$web" != "-" ]; then
+            printf '  Open its web app from your own browser instead; "hackrange-lab env"\n'
+            printf '  prints the address.\n'
+        fi
+        printf '\n'
     fi
 
     # The Week 11 challenge has a scanner beside it on a private network, where
