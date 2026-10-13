@@ -70,11 +70,11 @@ machine:
 machine the panel's button for this card opens that address for you rather than
 opening the lab's desktop, because this is the way to use this lab here.
 
-The lab's desktop does still connect, both on the Remote Desktop port and
-through the web desktop. Every frame of it is drawn under emulation, so it is
-brutally slow, and the lessons for these weeks all work inside Splunk's own
-pages anyway. You lose nothing by staying in your own browser. The other six
-labs are unaffected and open normally.
+Use your own browser for this lab on an ARM machine. The lab's desktop is not
+worth your time here: every frame of it is drawn under emulation, which is slow
+enough to be practically unusable, and the lessons for these weeks all work
+inside Splunk's own pages in any case. The other six labs are unaffected and
+open normally.
 
 ## Using it
 
@@ -151,7 +151,9 @@ reset`, which is what to run if you think somebody saw it:
 - **Remote Desktop**, on port 13489
 
 The browser opens whatever the running lab actually is: a desktop for the
-analyst, Splunk and Week 11 challenge labs, and a terminal for the rest.
+analyst, Splunk and Week 11 challenge labs, and a terminal for the rest. The
+one exception is the Splunk lab on an ARM machine, where the panel opens Splunk
+itself instead of the lab's desktop, for the reason given above.
 
 All three answer only on private networks, never from the internet, whatever
 the password. If you forward one of these ports on your router, the connection
