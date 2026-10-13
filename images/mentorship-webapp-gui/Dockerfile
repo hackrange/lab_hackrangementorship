@@ -32,12 +32,28 @@ RUN apt-get update \
       less vim-tiny nano openssh-server \
       xfce4 xfce4-terminal xfce4-panel xfce4-session xfdesktop4 xfwm4 \
       kali-defaults kali-themes \
+      # The panel layout comes from kali-defaults, and it names plugins this
+      # slimmed image would otherwise not have: the session started with a
+      # "Plugin loading failure" dialog listing whiskermenu, genmon,
+      # notification-plugin and power-manager-plugin (and cpugraph, which the
+      # layout also asks for).  These are installed rather than shipping our
+      # own panel layout so this desktop looks like every other Kali desktop
+      # in the course.  x11-xserver-utils is for xset, below.
+      xfce4-whiskermenu-plugin xfce4-cpugraph-plugin xfce4-genmon-plugin \
+      xfce4-notifyd xfce4-power-manager x11-xserver-utils \
       xrdp xorgxrdp xorg \
       firefox-esr burpsuite \
       python3 python3-flask \
       nodejs npm \
       thunar mousepad xdg-utils xclip zenity \
- && npm install -g @anthropic-ai/claude-code \
+ # --allow-scripts is required, not optional.  This npm blocks a package's
+ # install scripts unless the package is named, and warns rather than fails:
+ # "1 package had install scripts blocked because they are not covered by
+ # allowScripts".  Claude Code's postinstall is what downloads the
+ # platform-native binary, so without this the CLI installs and then reports
+ # "native binary not installed" the first time a student runs it.  Setting
+ # ignore-scripts=false is NOT enough; the package has to be allowlisted.
+ && npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code \
  && npm cache clean --force \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -66,6 +82,13 @@ RUN useradd -m -s /bin/bash -G sudo student \
  && mkdir -p /home/student/.config/xfce4/terminal \
  && printf '%s\n' '[Configuration]' 'CommandLoginShell=TRUE' 'MiscAlwaysShowTabs=FALSE' \
       > /home/student/.config/xfce4/terminal/terminalrc \
+ # The Xfce menu's Terminal entry does not use x-terminal-emulator.  It asks
+ # xfce4-session's helper, and with no helpers.rc the student was handed a
+ # "choose a terminal emulator" dialog from the menu while the desktop icon
+ # (which calls xfce4-terminal directly) worked fine.
+ && mkdir -p /home/student/.config/xfce4 \
+ && printf '%s\n' 'TerminalEmulator=xfce4-terminal' \
+      > /home/student/.config/xfce4/helpers.rc \
  # The portal's hostname is NOT written here.  /etc/hosts cannot be written
  # during a build (the daemon mounts it, and the write fails with exit code 2),
  # and it would be wasted work even if it could: Docker regenerates the file at

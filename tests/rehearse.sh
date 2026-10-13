@@ -126,6 +126,94 @@ start_lab() {
     return 0
 }
 
+# A desktop lab is more than a desktop that opens.
+#
+# Three faults reached a student in the Week 11 lab, all of them inside the
+# first minute of a session, and not one was visible to anything checked here:
+# the panel opened with a dialog listing four plugins it could not load, the
+# menu's Terminal entry asked which terminal emulator to use, and the AI the
+# whole lesson is built around said its native binary was not installed.
+# Everything that was being checked passed, because what was being checked was
+# whether the desktop started.  So these are the questions a student's first
+# minute asks.
+desktop_checks() {
+    local key="$1" proto="$2"
+    [ "$proto" = rdp ] || return 0
+
+    # Every panel plugin the configuration names has to be installed, or the
+    # session comes up with an error dialog sitting on top of it.  Slimming an
+    # image is how this happens: the layout comes from a package that assumes
+    # the full desktop, and the plugins it names quietly are not there.
+    local named missing=""
+    # Look in the panel DIRECTORIES, not for files with "panel" in the name.
+    # The file that matters is /etc/xdg/xfce4/panel/default.xml: the directory
+    # carries the name and the file does not, so a search by filename misses
+    # the one configuration this check exists to read.  Which is exactly what
+    # the first version of this check did.
+    named="$(asroot 'for f in /etc/xdg/xfce4/panel/*.xml /usr/share/xfce4/panel/*.xml \
+                              /home/student/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml; do
+                 [ -f "$f" ] || continue
+                 grep -ohE "name=\"plugin-[0-9]+\" type=\"string\" value=\"[^\"]+\"" "$f" 2>/dev/null
+             done' | sed 's/.*value="//; s/"$//' | sort -u)"
+    if [ -z "$named" ]; then
+        skip "$key: panel plugins (this desktop configures none by name)"
+    else
+        local plug
+        while IFS= read -r plug; do
+            [ -n "$plug" ] || continue
+            asroot "test -f /usr/share/xfce4/panel/plugins/$plug.desktop" >/dev/null 2>&1 ||
+                missing="$missing $plug"
+        done <<< "$named"
+        if [ -z "$missing" ]; then
+            ok "$key: every panel plugin it asks for is installed"
+        else
+            bad "$key: the panel asks for plugins that are not installed:$missing" \
+                "the session opens with a plugin loading failure dialog over it"
+        fi
+    fi
+
+    # A terminal has to be the one the DESKTOP picks, not only the one a
+    # launcher names.  The icon worked and the menu entry did not, because the
+    # menu goes through Xfce's preferred application helper and nothing had
+    # ever set it, so the student was asked to choose an emulator instead.
+    if asroot 'grep -q "^TerminalEmulator=" /home/student/.config/xfce4/helpers.rc' >/dev/null 2>&1 ||
+       asroot 'test -e /etc/alternatives/x-terminal-emulator' >/dev/null 2>&1; then
+        ok "$key: the desktop has a terminal of its own choosing"
+    else
+        bad "$key: no preferred terminal is set" \
+            "the menu's Terminal entry asks the student to pick an emulator"
+    fi
+
+    # Every launcher on the desktop has to point at a program that is there,
+    # and must not split on an unquoted space, which the desktop spec does
+    # silently.
+    local f name cmd bin stripped
+    for f in $(asroot 'ls /home/student/Desktop/*.desktop 2>/dev/null'); do
+        name="$(basename "$f")"
+        cmd="$(asroot "grep -m1 '^Exec=' '$f' 2>/dev/null" | sed 's/^Exec=//' | tr -d '\r')"
+        bin="$(printf '%s' "$cmd" | awk '{print $1}')"
+        stripped="$(printf '%s' "$cmd" | sed 's/"[^"]*"//g')"
+        if ! asroot "command -v '$bin'" >/dev/null 2>&1; then
+            bad "$key: the launcher $name points at a missing program" "$bin"
+            continue
+        fi
+        case "$stripped" in
+            *=*\ [A-Za-z]*) bad "$key: the launcher $name has an unquoted multi word argument" "$cmd" ;;
+            *) ok "$key: the launcher $name runs $bin" ;;
+        esac
+    done
+
+    # And anything that starts itself with the session, for the same reason.
+    for f in $(asroot 'ls /etc/xdg/autostart/*.desktop 2>/dev/null'); do
+        name="$(basename "$f")"
+        cmd="$(asroot "grep -m1 '^Exec=' '$f' 2>/dev/null" | sed 's/^Exec=//' | tr -d '\r')"
+        bin="$(printf '%s' "$cmd" | awk '{print $1}')"
+        [ -n "$bin" ] || continue
+        asroot "command -v '$bin'" >/dev/null 2>&1 ||
+            bad "$key: the autostart entry $name points at a missing program" "$bin"
+    done
+}
+
 # Both doors, on every lab, proved by opening them.
 #
 # The published doors are the same whatever the lab: SSH on 2223 and Remote
@@ -492,6 +580,17 @@ lab_webapp_gui() {
     for t in burpsuite firefox-esr claude xdg-open xclip; do
         inlab "command -v $t" >/dev/null && ok "webapp-gui: $t present" || bad "webapp-gui: $t missing"
     done
+    # Running it, not just finding it.  "command -v claude" passed for the whole
+    # life of this lab while the CLI answered "native binary not installed":
+    # npm had blocked the postinstall that downloads it.  A launcher that exists
+    # and fails is worse than one that is missing, because nothing reports it.
+    local ver
+    ver="$(asroot "su - student -c 'claude --version' 2>&1" | tr -d '\r' | tail -1)"
+    if printf '%s' "$ver" | grep -qE '^[0-9]+\.[0-9]+'; then
+        ok "webapp-gui: claude runs as the student ($ver)"
+    else
+        bad "webapp-gui: claude is installed but does not run" "$ver"
+    fi
     # Every desktop launcher must point at a real program AND survive the
     # desktop spec's splitting of Exec on spaces.
     local f name cmd bin stripped
@@ -558,6 +657,7 @@ run_lab() {
     if start_lab "$key"; then
         common_checks "$key"
         door_checks "$key" "$(field "$(row "$key")" 3)"
+        desktop_checks "$key" "$(field "$(row "$key")" 3)"
         rdp_checks "$key" "$(field "$(row "$key")" 3)"
         egress_checks "$key"
         web_checks "$key"
