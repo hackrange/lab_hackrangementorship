@@ -38,9 +38,12 @@ RUN apt-get update \
       # notification-plugin and power-manager-plugin (and cpugraph, which the
       # layout also asks for).  These are installed rather than shipping our
       # own panel layout so this desktop looks like every other Kali desktop
-      # in the course.  x11-xserver-utils is for xset, below.
+      # in the course.  The panel plugin is in xfce4-power-manager-PLUGINS, not
+      # in xfce4-power-manager: installing only the latter left the dialog up,
+      # naming one plugin instead of four.  x11-xserver-utils is for xset.
       xfce4-whiskermenu-plugin xfce4-cpugraph-plugin xfce4-genmon-plugin \
-      xfce4-notifyd xfce4-power-manager x11-xserver-utils \
+      xfce4-notifyd xfce4-power-manager xfce4-power-manager-plugins \
+      x11-xserver-utils \
       xrdp xorgxrdp xorg \
       firefox-esr burpsuite \
       python3 python3-flask \
@@ -60,12 +63,30 @@ RUN apt-get update \
 # Do not let the CLI self-update on launch in a throwaway lab.
 ENV DISABLE_AUTOUPDATER=1
 
+# A UTF-8 locale, or the Kali prompt's box-drawing characters arrive as
+# question marks.  ENV alone is not enough: it covers container processes, not
+# the PAM login shell that xrdp's session and sshd each start, which is the
+# shell the student actually types into.  kali-lab-ssh and netlab already do
+# this; this image was the one Kali-based lab that missed it.
+ENV LANG=C.UTF-8
+RUN printf 'LANG=C.UTF-8\n' > /etc/default/locale \
+ && (grep -q '^LANG=' /etc/environment 2>/dev/null || echo 'LANG=C.UTF-8' >> /etc/environment) \
+ # These two emit terminal escape sequences a plain shell does not interpret,
+ # so they print as garbage at the top of every terminal.
+ && rm -f /etc/profile.d/80-systemd-osc-context.sh \
+          /etc/profile.d/70-systemd-shell-extra.sh
+
 # The student account, the desktop session, and the launchers.  One layer, with
 # every config written inline.
 RUN useradd -m -s /bin/bash -G sudo student \
  && printf 'student ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/student \
  && chmod 440 /etc/sudoers.d/student \
  && mkdir -p /home/student/Desktop /home/student/app /var/run/sshd \
+ # Kali's login banner tells the student this is a minimal install and they
+ # "likely want to install supplementary tools".  That is wrong here: the tool
+ # set is chosen for the exercise, and the banner pushed our own warning about
+ # what they may point those tools at off the top of the screen.
+ && touch /home/student/.hushlogin \
  # xrdp: Guacamole connects over RDP on the standard 3389.
  #
  # The group membership is spelled out rather than left to the xrdp package's
